@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3B82F6">
+<title>ปฏิทินตารางงาน</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#F7FAFF;
+    --accent:#3B82F6;
+    --accent-soft:color-mix(in srgb, var(--accent) 16%, white);
+    --accent-ink:color-mix(in srgb, var(--accent) 75%, #0b1f3a);
+    --text:#111827;
+    --text-dim:#6B7280;
+    --text-faint:#9CA3AF;
+    --glass:rgba(255,255,255,0.62);
+    --glass-strong:rgba(255,255,255,0.82);
+    --glass-thin:rgba(255,255,255,0.40);
+    --border:rgba(255,255,255,0.55);
+    --hairline:rgba(17,24,39,0.07);
+    --shadow-sm:0 2px 10px rgba(17,24,39,0.05);
+    --shadow:0 10px 34px rgba(17,24,39,0.09);
+    --shadow-lg:0 24px 60px rgba(17,24,39,0.16);
+    --radius:22px;
+    --radius-sm:14px;
+    --radius-xs:10px;
+    --blur:saturate(170%) blur(22px);
+    --ease:cubic-bezier(.22,.61,.36,1);
+    --font:"Inter","Noto Sans Thai",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family:var(--font);
+    color:var(--text);
+    background:var(--bg);
+    overflow-wrap:break-word;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    line-height:1.5;
+  }
+  img,svg{max-width:100%}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input,select,textarea{font-family:inherit;font-size:16px;color:var(--text)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+
+  /* ===== Ambient background (the thing glass blurs over) ===== */
+  .ambient{position:fixed;inset:0;z-index:-1;overflow:hidden;background:
+      linear-gradient(160deg,#F7FAFF 0%,#EEF3FF 45%,#F4F0FF 100%);}
+  .blob{position:absolute;border-radius:50%;filter:blur(60px);opacity:.5;will-change:transform}
+  .blob.b1{width:46vw;height:46vw;left:-10vw;top:-12vw;background:radial-gradient(circle at 30% 30%,#9CC2FF,transparent 70%)}
+  .blob.b2{width:40vw;height:40vw;right:-12vw;top:8vh;background:radial-gradient(circle at 50% 50%,#F6B8D6,transparent 70%)}
+  .blob.b3{width:42vw;height:42vw;left:18vw;bottom:-18vw;background:radial-gradient(circle at 50% 50%,#C3B6FF,transparent 70%)}
+  .blob.b4{width:30vw;height:30vw;right:6vw;bottom:-8vw;background:radial-gradient(circle at 50% 50%,#A7E8D6,transparent 70%)}
+  @media (prefers-reduced-motion:no-preference){
+    .blob{animation:drift 26s var(--ease) infinite alternate}
+    .blob.b2{animation-duration:32s}
+    .blob.b3{animation-duration:30s}
+    .blob.b4{animation-duration:24s}
+  }
+  @keyframes drift{to{transform:translate3d(4%,3%,0) scale(1.08)}}
+
+  /* ===== Glass primitive ===== */
+  .glass{
+    background:var(--glass);
+    -webkit-backdrop-filter:var(--blur);
+    backdrop-filter:var(--blur);
+    border:1px solid var(--border);
+    box-shadow:var(--shadow);
+    border-radius:var(--radius);
+  }
+
+  /* ===== App shell ===== */
+  .app{
+    min-height:100vh;min-height:100dvh;
+    display:grid;
+    grid-template-columns:188px minmax(0,1fr) 332px;
+    grid-template-rows:auto 1fr;
+    grid-template-areas:"side head head" "side main panel";
+    gap:18px;
+    padding:18px;
+    max-width:1500px;margin:0 auto;
+  }
+  body.is-public .app{grid-template-columns:minmax(0,1fr) 332px;grid-template-areas:"head head" "main panel"}
+  body.is-public .sidebar{display:none}
+
+  /* ----- Header ----- */
+  .header{grid-area:head;display:flex;align-items:center;gap:14px;padding:13px 18px;flex-wrap:wrap}
+  .cal-title{display:flex;flex-direction:column;min-width:0;margin-right:auto}
+  .cal-title h1{font-size:20px;font-weight:700;margin:0;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cal-title p{margin:0;font-size:12.5px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .nav-period{display:flex;align-items:center;gap:4px}
+  .period-label{font-size:15px;font-weight:600;min-width:138px;text-align:center;letter-spacing:-.01em}
+  .icon-btn{
+    width:38px;height:38px;display:inline-grid;place-items:center;border-radius:12px;
+    color:var(--text-dim);transition:background .18s var(--ease),color .18s var(--ease),transform .18s var(--ease);
+  }
+  .icon-btn:hover{background:rgba(255,255,255,.6);color:var(--text)}
+  .icon-btn:active{transform:scale(.92)}
+  .icon-btn svg{width:19px;height:19px}
+
+  .seg{display:flex;gap:2px;padding:3px;background:rgba(255,255,255,.5);border:1px solid var(--border);border-radius:13px}
+  .seg button{padding:7px 14px;font-size:13px;font-weight:600;color:var(--text-dim);border-radius:10px;transition:all .18s var(--ease)}
+  .seg button[aria-pressed="true"]{background:#fff;color:var(--accent-ink);box-shadow:var(--shadow-sm)}
+
+  .btn{
+    display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:12px;font-size:13.5px;font-weight:600;
+    transition:transform .16s var(--ease),box-shadow .18s var(--ease),background .18s var(--ease);
+  }
+  .btn svg{width:17px;height:17px}
+  .btn-primary{background:var(--accent);color:#fff;box-shadow:0 6px 18px color-mix(in srgb,var(--accent) 38%,transparent)}
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 24px color-mix(in srgb,var(--accent) 44%,transparent)}
+  .btn-primary:active{transform:translateY(0)}
+  .btn-ghost{background:rgba(255,255,255,.55);border:1px solid var(--border);color:var(--text)}
+  .btn-ghost:hover{background:#fff}
+  .btn-soft{background:var(--accent-soft);color:var(--accent-ink)}
+  .btn-danger{background:#FEE2E2;color:#B91C1C}
+  .btn-danger:hover{background:#FECACA}
+
+  .today-btn{padding:9px 13px;font-size:13px;font-weight:600;border-radius:12px;background:rgba(255,255,255,.55);border:1px solid var(--border);color:var(--text)}
+  .today-btn:hover{background:#fff}
+
+  /* ----- Sidebar ----- */
+  .sidebar{grid-area:side;display:flex;flex-direction:column;gap:16px;padding:16px;align-self:start;position:sticky;top:18px}
+  .brand{display:flex;align-items:center;gap:10px;padding:2px 4px 6px}
+  .brand .dot{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 50%,#a78bfa));box-shadow:var(--shadow-sm)}
+  .brand b{font-size:14.5px;font-weight:700;letter-spacing:-.01em}
+  .nav-list{display:flex;flex-direction:column;gap:2px}
+  .nav-list button{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:12px;font-size:14px;font-weight:600;color:var(--text-dim);transition:all .16s var(--ease);text-align:left;width:100%}
+  .nav-list button svg{width:18px;height:18px}
+  .nav-list button:hover{background:rgba(255,255,255,.55);color:var(--text)}
+  .nav-list button.active{background:#fff;color:var(--accent-ink);box-shadow:var(--shadow-sm)}
+
+  /* mini month */
+  .mini{padding-top:4px;border-top:1px solid var(--hairline)}
+  .mini-head{display:flex;align-items:center;justify-content:space-between;margin:8px 2px 8px}
+  .mini-head span{font-size:13px;font-weight:600}
+  .mini-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+  .mini-grid .wd{font-size:10px;color:var(--text-faint);text-align:center;padding-bottom:3px;font-weight:600}
+  .mini-grid button{aspect-ratio:1;display:grid;place-items:center;font-size:11.5px;border-radius:8px;color:var(--text);transition:all .14s}
+  .mini-grid button.out{color:var(--text-faint)}
+  .mini-grid button:hover{background:rgba(255,255,255,.7)}
+  .mini-grid button.sel{background:var(--accent);color:#fff;font-weight:700}
+  .mini-grid button.today{box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent-ink);font-weight:700}
+  .mini-grid button.has::after{content:"";width:4px;height:4px;border-radius:50%;background:var(--accent);position:absolute;transform:translateY(11px)}
+  .mini-grid button{position:relative}
+
+  .legend{display:flex;flex-direction:column;gap:7px;padding-top:12px;border-top:1px solid var(--hairline)}
+  .legend .lg-title{font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+  .legend .lg-row{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:4px;flex:none}
+
+  /* ----- Main calendar area ----- */
+  .main{grid-area:main;padding:16px;min-height:60vh;display:flex;flex-direction:column;overflow:hidden}
+  .toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .search{position:relative;flex:1;min-width:160px;max-width:300px}
+  .search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--text-faint)}
+  .search input{width:100%;padding:9px 12px 9px 36px;border-radius:12px;background:rgba(255,255,255,.55);border:1px solid var(--border);font-size:13.5px;transition:background .18s}
+  .search input::placeholder{color:var(--text-faint)}
+  .search input:focus{background:#fff;outline:none;border-color:color-mix(in srgb,var(--accent) 40%,var(--border))}
+
+  .view{flex:1;min-height:0;animation:viewIn .26s var(--ease)}
+  @keyframes viewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* Month grid */
+  .month{display:flex;flex-direction:column;height:100%}
+  .month-wd{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:6px}
+  .month-wd span{font-size:11.5px;font-weight:600;color:var(--text-faint);text-align:center;letter-spacing:.02em}
+  .month-grid{display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;gap:6px;flex:1;min-height:0}
+  .cell{
+    position:relative;display:flex;flex-direction:column;gap:3px;padding:7px 7px 4px;border-radius:13px;
+    background:rgba(255,255,255,.40);border:1px solid rgba(255,255,255,.5);min-height:84px;overflow:hidden;
+    transition:background .16s var(--ease),box-shadow .16s var(--ease),transform .16s var(--ease);cursor:pointer;
+  }
+  .cell:hover{background:rgba(255,255,255,.7);box-shadow:var(--shadow-sm)}
+  .cell.out{opacity:.45}
+  .cell.sel{box-shadow:inset 0 0 0 2px var(--accent),var(--shadow-sm)}
+  .cell .dnum{font-size:13px;font-weight:600;color:var(--text);width:25px;height:25px;display:grid;place-items:center;border-radius:50%;align-self:flex-start}
+  .cell.today .dnum{background:var(--accent);color:#fff;font-weight:700}
+  .chip{
+    font-size:11px;font-weight:600;line-height:1.3;padding:3px 7px;border-radius:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    display:flex;align-items:center;gap:5px;transition:transform .12s var(--ease)
+  }
+  .chip:hover{transform:translateX(1px)}
+  .chip .cdot{width:6px;height:6px;border-radius:50%;flex:none}
+  .chip.done{text-decoration:line-through;opacity:.65}
+  .more{font-size:10.5px;font-weight:600;color:var(--text-dim);padding:1px 6px}
+
+  /* Week view */
+  .week{display:flex;flex-direction:column;height:100%}
+  .week-head{display:grid;grid-template-columns:54px repeat(7,1fr);border-bottom:1px solid var(--hairline);padding-bottom:6px}
+  .week-head .wcol{text-align:center}
+  .week-head .wname{font-size:11px;color:var(--text-faint);font-weight:600}
+  .week-head .wnum{font-size:16px;font-weight:700;width:32px;height:32px;border-radius:50%;display:inline-grid;place-items:center;margin-top:2px}
+  .week-head .wcol.today .wnum{background:var(--accent);color:#fff}
+  .week-allday{display:grid;grid-template-columns:54px repeat(7,1fr);gap:2px;padding:5px 0;border-bottom:1px solid var(--hairline);min-height:30px}
+  .week-allday .lbl{font-size:10px;color:var(--text-faint);align-self:center;text-align:right;padding-right:8px}
+  .week-allday .adcell{display:flex;flex-direction:column;gap:2px;padding:0 2px}
+  .week-scroll{flex:1;overflow-y:auto;position:relative}
+  .week-grid{display:grid;grid-template-columns:54px repeat(7,1fr);position:relative}
+  .hour-row{display:contents}
+  .hour-lbl{grid-column:1;font-size:10.5px;color:var(--text-faint);text-align:right;padding:0 8px;transform:translateY(-6px);height:46px}
+  .day-col{position:relative;border-left:1px solid var(--hairline)}
+  .hcell{height:46px;border-bottom:1px solid rgba(17,24,39,.045)}
+  .wk-event{position:absolute;left:3px;right:3px;border-radius:8px;padding:4px 7px;font-size:11px;font-weight:600;overflow:hidden;cursor:pointer;box-shadow:var(--shadow-sm);transition:transform .12s}
+  .wk-event:hover{transform:scale(1.01);z-index:5}
+  .wk-event .wk-t{font-size:10px;opacity:.8;font-weight:600}
+  .nowline{position:absolute;left:54px;right:0;height:2px;background:#EF4444;z-index:6;pointer-events:none}
+  .nowline::before{content:"";position:absolute;left:-5px;top:-3px;width:8px;height:8px;border-radius:50%;background:#EF4444}
+
+  /* Day view */
+  .day{height:100%;display:flex;flex-direction:column}
+  .day-head{display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
+  .day-head .big{font-size:30px;font-weight:700;letter-spacing:-.02em}
+  .day-head .sub{font-size:14px;color:var(--text-dim)}
+  .timeline{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:9px;padding-right:4px}
+  .tl-item{display:grid;grid-template-columns:62px 1fr;gap:12px;align-items:start}
+  .tl-time{font-size:12.5px;font-weight:600;color:var(--text-dim);text-align:right;padding-top:13px;line-height:1.25}
+  .tl-time small{display:block;color:var(--text-faint);font-weight:500;font-size:11px}
+  .tl-card{
+    border-radius:15px;padding:13px 15px;border-left:4px solid;display:flex;flex-direction:column;gap:5px;
+    background:rgba(255,255,255,.65);border:1px solid var(--border);border-left-width:4px;box-shadow:var(--shadow-sm);
+    transition:transform .16s var(--ease),box-shadow .16s var(--ease);cursor:pointer;position:relative;
+  }
+  .tl-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+  .tl-card .tl-title{font-size:15px;font-weight:600;letter-spacing:-.01em}
+  .tl-card .tl-desc{font-size:13px;color:var(--text-dim)}
+  .tl-card .tl-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px}
+
+  .badge{font-size:11px;font-weight:600;padding:2.5px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:5px}
+  .badge .bdot{width:6px;height:6px;border-radius:50%}
+  .b-upcoming{background:#DBEAFE;color:#1E40AF}
+  .b-in_progress{background:#FEF3C7;color:#92400E}
+  .b-done{background:#DCFCE7;color:#166534}
+  .b-cancelled{background:#F3F4F6;color:#6B7280}
+  .cat-tag{font-size:11px;font-weight:600;color:var(--text-dim);display:inline-flex;align-items:center;gap:5px}
+
+  /* hidden-from-public marker (admin only) */
+  .pvt{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--text-faint)}
+  .pvt svg{width:12px;height:12px}
+
+  /* ----- Right day panel ----- */
+  .panel{grid-area:panel;padding:16px;display:flex;flex-direction:column;gap:12px;align-self:start;position:sticky;top:18px;max-height:calc(100dvh - 36px)}
+  .panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+  .panel-head .pd-date{font-size:13px;color:var(--text-dim);font-weight:600}
+  .panel-head .pd-big{font-size:22px;font-weight:700;letter-spacing:-.01em}
+  .panel-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding-right:3px}
+  .pl-card{
+    border-radius:14px;padding:11px 13px;border-left:4px solid;background:rgba(255,255,255,.6);border:1px solid var(--border);border-left-width:4px;
+    cursor:pointer;transition:transform .15s var(--ease),box-shadow .15s var(--ease);
+  }
+  .pl-card:hover{transform:translateX(2px);box-shadow:var(--shadow-sm)}
+  .pl-card .pl-t{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px}
+  .pl-card .pl-time{font-size:12px;color:var(--text-dim);margin-top:2px}
+
+  /* empty state */
+  .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;color:var(--text-dim);padding:32px 16px;height:100%}
+  .empty .em-emoji{font-size:30px;opacity:.8}
+  .empty p{margin:0;font-size:13.5px}
+  .empty .em-sub{font-size:12px;color:var(--text-faint)}
+
+  /* ===== FAB / bottom nav (mobile) ===== */
+  .fab{display:none;position:fixed;right:18px;bottom:calc(78px + var(--safe-b));width:56px;height:56px;border-radius:18px;background:var(--accent);color:#fff;place-items:center;box-shadow:0 12px 28px color-mix(in srgb,var(--accent) 45%,transparent);z-index:40;transition:transform .18s var(--ease)}
+  .fab:active{transform:scale(.92)}
+  .fab svg{width:24px;height:24px}
+  .botnav{display:none}
+
+  /* ===== Filter popover ===== */
+  .pop-wrap{position:relative}
+  .popover{
+    position:absolute;top:46px;right:0;width:248px;padding:14px;z-index:30;
+    opacity:0;transform:translateY(-6px) scale(.98);pointer-events:none;transition:all .18s var(--ease);
+  }
+  .popover.open{opacity:1;transform:none;pointer-events:auto}
+  .fl-group{margin-bottom:12px}
+  .fl-group:last-child{margin-bottom:0}
+  .fl-group h4{font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin:0 0 8px}
+  .fl-opts{display:flex;flex-wrap:wrap;gap:6px}
+  .fl-opt{font-size:12px;font-weight:600;padding:5px 11px;border-radius:999px;background:rgba(255,255,255,.6);border:1px solid var(--border);color:var(--text-dim);transition:all .14s}
+  .fl-opt[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:transparent}
+  .fl-reset{margin-top:10px;width:100%;font-size:12.5px;font-weight:600;color:var(--accent-ink);padding:7px;border-radius:10px;background:var(--accent-soft)}
+
+  /* ===== Modal ===== */
+  .scrim{position:fixed;inset:0;background:rgba(17,24,39,.32);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);z-index:100;opacity:0;pointer-events:none;transition:opacity .22s var(--ease)}
+  .scrim.open{opacity:1;pointer-events:auto}
+  .modal{
+    position:fixed;z-index:101;left:50%;top:50%;transform:translate(-50%,-46%) scale(.97);
+    width:min(520px,calc(100vw - 32px));max-height:90dvh;overflow:hidden;display:flex;flex-direction:column;
+    background:var(--glass-strong);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+    border:1px solid var(--border);border-radius:24px;box-shadow:var(--shadow-lg);
+    opacity:0;pointer-events:none;transition:opacity .22s var(--ease),transform .26s var(--ease);
+  }
+  .modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px}
+  .modal-head h3{margin:0;font-size:17px;font-weight:700;letter-spacing:-.01em}
+  .modal-body{padding:4px 20px 18px;overflow-y:auto}
+  .modal-foot{display:flex;gap:8px;padding:14px 20px;border-top:1px solid var(--hairline);background:rgba(255,255,255,.3)}
+
+  .field{margin-bottom:13px}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px}
+  .field input[type=text],.field input[type=email],.field input[type=date],.field input[type=time],.field select,.field textarea,.field input[type=password]{
+    width:100%;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.7);border:1px solid var(--border);transition:border-color .16s,background .16s;
+  }
+  .field textarea{resize:vertical;min-height:64px;line-height:1.5}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;background:#fff;border-color:color-mix(in srgb,var(--accent) 45%,var(--border))}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  .color-row{display:flex;gap:8px;flex-wrap:wrap}
+  .color-dot{width:30px;height:30px;border-radius:50%;cursor:pointer;transition:transform .14s var(--ease);position:relative;border:2px solid transparent}
+  .color-dot:hover{transform:scale(1.12)}
+  .color-dot[aria-pressed="true"]{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--text)}
+
+  .toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;border-radius:13px;background:rgba(255,255,255,.5);border:1px solid var(--border)}
+  .toggle .tg-txt{font-size:13.5px;font-weight:600}
+  .toggle .tg-sub{font-size:11.5px;color:var(--text-dim);font-weight:400}
+  .switch{width:46px;height:27px;border-radius:999px;background:#D1D5DB;position:relative;flex:none;transition:background .2s var(--ease)}
+  .switch::after{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .2s var(--ease)}
+  .switch[aria-checked="true"]{background:var(--accent)}
+  .switch[aria-checked="true"]::after{transform:translateX(19px)}
+
+  /* event detail modal */
+  .detail-strip{height:6px;border-radius:0;margin:-1px -1px 0;border-radius:24px 24px 0 0}
+  .detail-body{padding:18px 20px}
+  .detail-body h3{margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-.01em}
+  .detail-meta{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+  .detail-line{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text);padding:7px 0}
+  .detail-line svg{width:17px;height:17px;color:var(--text-faint);flex:none}
+  .detail-line.desc{color:var(--text-dim);align-items:flex-start}
+  .detail-line.desc svg{margin-top:2px}
+
+  /* ===== Settings page ===== */
+  .settings-page{position:fixed;inset:0;z-index:60;overflow-y:auto;padding:18px;display:none}
+  .settings-page.open{display:block;animation:viewIn .26s var(--ease)}
+  .settings-wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+  .settings-top{display:flex;align-items:center;gap:12px;padding:4px 2px}
+  .settings-top h2{font-size:22px;font-weight:700;margin:0;margin-right:auto;letter-spacing:-.01em}
+  .scard{padding:18px 20px}
+  .scard h3{font-size:14px;font-weight:700;margin:0 0 4px}
+  .scard .sc-sub{font-size:12.5px;color:var(--text-dim);margin:0 0 14px}
+  .link-box{display:flex;gap:8px;align-items:center}
+  .link-box input{flex:1;font-size:12.5px;color:var(--text-dim);background:rgba(255,255,255,.5);border:1px solid var(--border);border-radius:11px;padding:9px 11px}
+  .theme-dots{display:flex;gap:10px;flex-wrap:wrap}
+  .theme-dot{width:34px;height:34px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .14s}
+  .theme-dot:hover{transform:scale(1.1)}
+  .theme-dot[aria-pressed="true"]{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--text)}
+  .cat-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+  .cat-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.5);border:1px solid var(--border)}
+  .cat-item .cat-sw{width:16px;height:16px;border-radius:5px;flex:none;cursor:pointer}
+  .cat-item input{flex:1;background:transparent;border:none;font-size:13.5px;font-weight:500;padding:2px 0}
+  .cat-item input:focus{outline:none}
+  .cat-add{display:flex;gap:8px}
+  .cat-add input{flex:1;padding:9px 11px;border-radius:11px;background:rgba(255,255,255,.6);border:1px solid var(--border);font-size:13.5px}
+
+  /* ===== Login overlay ===== */
+  .login{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:20px;
+    background:linear-gradient(160deg,#F7FAFF,#EEF3FF)}
+  .login.open{display:flex}
+  .login-card{width:min(380px,100%);padding:30px 28px;text-align:center}
+  .login-card .lg-logo{width:54px;height:54px;border-radius:16px;margin:0 auto 16px;background:linear-gradient(135deg,var(--accent),#a78bfa);box-shadow:var(--shadow)}
+  .login-card h2{margin:0 0 6px;font-size:20px;font-weight:700}
+  .login-card p{margin:0 0 20px;font-size:13px;color:var(--text-dim)}
+  .login-card input{width:100%;text-align:center;padding:12px;border-radius:13px;background:rgba(255,255,255,.7);border:1px solid var(--border);margin-bottom:12px}
+  .login-card input[type=password]{letter-spacing:.05em}
+  .login-err{color:#B91C1C;font-size:12.5px;margin-bottom:10px;min-height:16px}
+  .login-hint{font-size:11.5px;color:var(--text-faint);margin-top:14px}
+
+  /* ===== Toast ===== */
+  .toast-wrap{position:fixed;left:50%;bottom:calc(24px + var(--safe-b));transform:translateX(-50%);z-index:300;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+  .toast{
+    display:flex;align-items:center;gap:9px;padding:11px 16px;border-radius:14px;font-size:13.5px;font-weight:600;
+    background:rgba(17,24,39,.88);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:var(--shadow-lg);
+    animation:toastIn .3s var(--ease);
+  }
+  .toast svg{width:17px;height:17px;color:#6EE7B7}
+  @keyframes toastIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+  /* ===== Confirm dialog ===== */
+  .confirm{position:fixed;z-index:120;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);width:min(360px,calc(100vw - 40px));padding:22px;text-align:center;
+    opacity:0;pointer-events:none;transition:opacity .2s var(--ease),transform .22s var(--ease)}
+  .confirm.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+  .confirm h4{margin:0 0 8px;font-size:16px;font-weight:700}
+  .confirm p{margin:0 0 18px;font-size:13.5px;color:var(--text-dim)}
+  .confirm .cf-row{display:flex;gap:9px}
+  .confirm .cf-row .btn{flex:1;justify-content:center}
+
+  .pd-empty{font-size:12.5px;color:var(--text-faint);padding:16px 4px}
+
+  /* ===== Skeleton loading ===== */
+  .skel{position:relative;overflow:hidden;background:rgba(255,255,255,.4)}
+  .skel::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);animation:shimmer 1.4s infinite}
+  @keyframes shimmer{to{transform:translateX(100%)}}
+
+  .hide{display:none !important}
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width:1080px){
+    .app{grid-template-columns:188px minmax(0,1fr);grid-template-areas:"side head" "side main"}
+    .panel{display:none}
+    body.is-public .app{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "main"}
+  }
+  @media (max-width:760px){
+    .app{grid-template-columns:1fr;grid-template-areas:"head" "main";gap:12px;padding:12px;padding-bottom:calc(86px + var(--safe-b))}
+    body.is-public .app{grid-template-columns:1fr;grid-template-areas:"head" "main"}
+    .sidebar{display:none}
+    .header{padding:12px 14px;gap:10px}
+    .cal-title h1{font-size:17px}
+    .period-label{min-width:auto;font-size:14px}
+    .header .today-btn,.header .add-btn-desktop{display:none}
+    .main{padding:12px}
+    .cell{min-height:62px;padding:5px 4px 3px;border-radius:11px}
+    .cell .dnum{font-size:12px;width:22px;height:22px}
+    .chip{font-size:0;padding:0;height:5px;border-radius:3px;gap:0}
+    .chip .cdot{width:100%;height:5px;border-radius:3px}
+    .more{font-size:9.5px;padding:0 2px}
+    .month-grid{gap:4px}
+    .day-head .big{font-size:24px}
+    .week-head .wnum{font-size:13px;width:26px;height:26px}
+    .hour-lbl{font-size:9.5px;padding:0 4px}
+    .week-head,.week-allday,.week-grid{grid-template-columns:38px repeat(7,1fr)}
+    .nowline{left:38px}
+    .fab{display:grid}
+    .botnav{
+      display:flex;position:fixed;left:12px;right:12px;bottom:calc(12px + var(--safe-b));z-index:45;
+      padding:7px;justify-content:space-around;
+    }
+    .botnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px;font-size:10.5px;font-weight:600;color:var(--text-dim);border-radius:12px;transition:all .15s}
+    .botnav button svg{width:20px;height:20px}
+    .botnav button.active{color:var(--accent-ink);background:rgba(255,255,255,.6)}
+    body.is-public .botnav{display:none}
+    .settings-page{padding-bottom:calc(86px + var(--safe-b))}
+    .row2{grid-template-columns:1fr}
+    .popover{position:fixed;left:12px;right:12px;top:auto;bottom:calc(12px + var(--safe-b));width:auto}
+    /* bottom sheet behavior for modal on mobile */
+    .modal{top:auto;bottom:0;left:0;transform:translateY(100%);width:100%;max-width:100%;max-height:92dvh;border-radius:24px 24px 0 0}
+    .modal.open{transform:translateY(0)}
+    .modal-foot{padding-bottom:calc(14px + var(--safe-b))}
+  }
+  @media (max-width:380px){
+    .seg button{padding:7px 10px;font-size:12px}
+    .month-wd span{font-size:10px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.001ms !important;transition-duration:.05ms !important}
+    .blob{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="ambient" aria-hidden="true">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div>
+</div>
+
+<!-- LOGIN -->
+<div class="login" id="login">
+  <div class="login-card glass">
+    <div class="lg-logo"></div>
+    <h2>เข้าสู่โหมดแก้ไข</h2>
+    <p id="loginCopy">เข้าสู่ระบบด้วยบัญชีแอดมินเพื่อจัดการตารางงาน</p>
+    <input type="email" id="loginEmail" placeholder="อีเมล" autocomplete="username" aria-label="อีเมล">
+    <input type="password" id="loginPass" placeholder="รหัสผ่าน" autocomplete="current-password" aria-label="รหัสผ่าน">
+    <div class="login-err" id="loginErr"></div>
+    <button class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center">เข้าสู่ระบบ</button>
+    <div class="login-hint" id="loginHint">ใช้บัญชีที่สร้างไว้ใน Supabase Authentication</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
+  <!-- Sidebar -->
+  <aside class="sidebar glass" id="sidebar">
+    <div class="brand"><div class="dot"></div><b id="brandName">ปฏิทินงาน</b></div>
+    <nav class="nav-list">
+      <button class="active" data-nav="calendar" aria-label="ปฏิทิน"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>ปฏิทิน</button>
+      <button data-nav="settings" aria-label="ตั้งค่า"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>ตั้งค่า</button>
+    </nav>
+    <div class="mini">
+      <div class="mini-head"><button class="icon-btn" id="miniPrev" aria-label="เดือนก่อน"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></button><span id="miniLabel"></span><button class="icon-btn" id="miniNext" aria-label="เดือนถัดไป"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg></button></div>
+      <div class="mini-grid" id="miniGrid"></div>
+    </div>
+    <div class="legend" id="legend"></div>
+  </aside>
+
+  <!-- Header -->
+  <header class="header glass">
+    <div class="cal-title"><h1 id="hTitle">ปฏิทินงาน</h1><p id="hDesc"></p></div>
+    <div class="nav-period">
+      <button class="icon-btn" id="prevBtn" aria-label="ย้อนกลับ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <span class="period-label" id="periodLabel"></span>
+      <button class="icon-btn" id="nextBtn" aria-label="ถัดไป"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg></button>
+    </div>
+    <button class="today-btn" id="todayBtn">วันนี้</button>
+    <div class="seg" role="group" aria-label="มุมมอง">
+      <button data-view="month" aria-pressed="true">เดือน</button>
+      <button data-view="week" aria-pressed="false">สัปดาห์</button>
+      <button data-view="day" aria-pressed="false">วัน</button>
+    </div>
+    <button class="btn btn-primary add-btn-desktop" id="addBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>เพิ่มงาน</button>
+  </header>
+
+  <!-- Main -->
+  <main class="main glass">
+    <div class="toolbar">
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+        <input type="text" id="searchInput" placeholder="ค้นหากิจกรรม…" aria-label="ค้นหา">
+      </div>
+      <div class="pop-wrap">
+        <button class="btn btn-ghost" id="filterBtn" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>กรอง<span id="filterCount"></span></button>
+        <div class="popover glass" id="filterPop"></div>
+      </div>
+    </div>
+    <div class="view" id="view"></div>
+  </main>
+
+  <!-- Right panel -->
+  <aside class="panel glass" id="panel">
+    <div class="panel-head">
+      <div><div class="pd-date" id="pdDate"></div><div class="pd-big" id="pdBig"></div></div>
+      <button class="btn btn-soft" id="panelAdd" aria-label="เพิ่มงานวันนี้"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></button>
+    </div>
+    <div class="panel-list" id="panelList"></div>
+  </aside>
+</div>
+
+<!-- FAB + bottom nav (mobile) -->
+<button class="fab" id="fab" aria-label="เพิ่มงาน"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></button>
+<nav class="botnav glass" id="botnav">
+  <button class="active" data-nav="calendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>ปฏิทิน</button>
+  <button data-nav="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>ตั้งค่า</button>
+</nav>
+
+<!-- SETTINGS PAGE -->
+<div class="settings-page" id="settingsPage">
+  <div class="settings-wrap">
+    <div class="settings-top">
+      <button class="icon-btn glass" id="settingsBack" aria-label="กลับ" style="border-radius:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h2>ตั้งค่า</h2>
+    </div>
+
+    <div class="scard glass">
+      <h3>ข้อมูลปฏิทิน</h3>
+      <p class="sc-sub">ชื่อและคำอธิบายจะแสดงบนหัวเว็บทั้งหน้าแอดมินและหน้าแชร์</p>
+      <div class="field"><label>ชื่อปฏิทิน</label><input type="text" id="setName" placeholder="เช่น ตารางงานร้าน"></div>
+      <div class="field"><label>คำอธิบายสั้น ๆ</label><input type="text" id="setDesc" placeholder="เช่น ตารางนัดหมายและงานประจำสัปดาห์"></div>
+    </div>
+
+    <div class="scard glass">
+      <h3>สีหลักของเว็บ</h3>
+      <p class="sc-sub">ใช้กับปุ่ม ไฮไลต์วันนี้ และองค์ประกอบหลัก</p>
+      <div class="theme-dots" id="themeDots"></div>
+    </div>
+
+    <div class="scard glass">
+      <h3>ลิงก์แชร์ (อ่านอย่างเดียว)</h3>
+      <p class="sc-sub">เปิดให้คนอื่นดูตารางได้โดยไม่ต้องล็อกอิน และแก้ไขไม่ได้</p>
+      <div class="toggle" style="margin-bottom:12px">
+        <div><div class="tg-txt">เปิดลิงก์สาธารณะ</div><div class="tg-sub">ปิดอยู่ = ลิงก์จะแสดงข้อความว่ายังไม่เปิดให้ดู</div></div>
+        <div class="switch" id="pubSwitch" role="switch" aria-checked="false" tabindex="0" aria-label="เปิดลิงก์สาธารณะ"></div>
+      </div>
+      <div class="link-box" style="margin-bottom:10px"><input type="text" id="pubLink" readonly aria-label="ลิงก์สาธารณะ"><button class="btn btn-primary" id="copyLink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>คัดลอก</button></div>
+      <button class="btn btn-ghost" id="regenLink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></svg>สร้างลิงก์ใหม่</button>
+      <p class="sc-sub" style="margin:10px 0 0">สร้างลิงก์ใหม่จะทำให้ลิงก์เดิมใช้ไม่ได้ทันที</p>
+    </div>
+
+    <div class="scard glass">
+      <h3>หมวดหมู่กิจกรรม</h3>
+      <p class="sc-sub">ลบหมวดหมู่ที่มีงานอยู่ งานเหล่านั้นจะกลับไปเป็น “งานทั่วไป”</p>
+      <div class="cat-list" id="catList"></div>
+      <div class="cat-add">
+        <input type="text" id="newCatName" placeholder="ชื่อหมวดหมู่ใหม่">
+        <button class="btn btn-soft" id="addCatBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>เพิ่ม</button>
+      </div>
+    </div>
+
+    <div class="scard glass">
+      <h3>บัญชีแอดมิน</h3>
+      <p class="sc-sub">ใช้ Supabase Auth สำหรับสิทธิ์เขียนข้อมูลและจัดการปฏิทิน</p>
+      <div class="field"><label>เปลี่ยนรหัสผ่านใหม่</label><input type="password" id="setPass" autocomplete="new-password" placeholder="เว้นว่างไว้ถ้าไม่เปลี่ยน"></div>
+      <div class="row2">
+        <button class="btn btn-soft" id="savePassBtn">เปลี่ยนรหัสผ่าน</button>
+        <button class="btn btn-ghost" id="logoutBtn">ออกจากระบบ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCRIM + EVENT MODAL -->
+<div class="scrim" id="scrim"></div>
+
+<div class="modal" id="eventModal" role="dialog" aria-modal="true" aria-labelledby="emTitle">
+  <div class="modal-head"><h3 id="emTitle">เพิ่มกิจกรรม</h3><button class="icon-btn" id="emClose" aria-label="ปิด"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>
+  <div class="modal-body">
+    <div class="field"><label>ชื่อกิจกรรม</label><input type="text" id="fTitle" placeholder="เช่น ประชุมทีม"></div>
+    <div class="field"><label>วันที่</label><input type="date" id="fDate"></div>
+    <div class="row2">
+      <div class="field"><label>เวลาเริ่ม</label><input type="time" id="fStart"></div>
+      <div class="field"><label>เวลาสิ้นสุด</label><input type="time" id="fEnd"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>หมวดหมู่</label><select id="fCat"></select></div>
+      <div class="field"><label>สถานะ</label><select id="fStatus">
+        <option value="upcoming">กำลังจะถึง</option>
+        <option value="in_progress">กำลังทำ</option>
+        <option value="done">เสร็จแล้ว</option>
+        <option value="cancelled">ยกเลิก</option>
+      </select></div>
+    </div>
+    <div class="field"><label>สี</label><div class="color-row" id="fColors"></div></div>
+    <div class="field"><label>รายละเอียด</label><textarea id="fDesc" placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"></textarea></div>
+    <div class="toggle">
+      <div><div class="tg-txt">แสดงในหน้าสาธารณะ</div><div class="tg-sub">ปิด = เห็นเฉพาะแอดมิน คนเปิดลิงก์จะไม่เห็น</div></div>
+      <div class="switch" id="fPublic" role="switch" aria-checked="true" tabindex="0" aria-label="แสดงในหน้าสาธารณะ"></div>
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-danger hide" id="emDelete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>ลบ</button>
+    <button class="btn btn-ghost" id="emCancel" style="margin-left:auto">ยกเลิก</button>
+    <button class="btn btn-primary" id="emSave">บันทึก</button>
+  </div>
+</div>
+
+<!-- DETAIL MODAL (read-only view) -->
+<div class="modal" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="dmTitle">
+  <div class="detail-strip" id="dmStrip"></div>
+  <div class="detail-body">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+      <h3 id="dmTitle"></h3>
+      <button class="icon-btn" id="dmClose" aria-label="ปิด"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="detail-meta" id="dmMeta"></div>
+    <div id="dmLines"></div>
+  </div>
+  <div class="modal-foot" id="dmFoot">
+    <button class="btn btn-ghost" id="dmEdit" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>แก้ไข</button>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="confirm glass" id="confirm">
+  <h4 id="cfTitle">ยืนยัน</h4>
+  <p id="cfMsg"></p>
+  <div class="cf-row"><button class="btn btn-ghost" id="cfNo">ยกเลิก</button><button class="btn btn-danger" id="cfYes">ลบ</button></div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- Supabase config ---------- */
+  var SUPABASE_URL="https://zxedfesdtwreakkqkruz.supabase.co";
+  var SUPABASE_ANON_KEY="sb_publishable_nFB9HAQP1VJ2BiX-GaUIHQ_WdxUJgTK";
+  var LEGACY_KEY="lqcal_v1";
+  var sb=null;
+  var currentUser=null;
+  var saveTimer=null;
+  var pendingSave=null;
+  var saveInFlight=false;
+  var realtimeChannel=null;
+  var remoteRefreshTimer=null;
+
+  function isSupabaseConfigured(){
+    return /^https:\/\/.+\.supabase\.co$/i.test(SUPABASE_URL) && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY.indexOf("YOUR_")!==0;
+  }
+  function getSupabase(){
+    if(sb)return sb;
+    if(!window.supabase)throw new Error("ไม่พบ Supabase client CDN");
+    if(!isSupabaseConfigured())throw new Error("ยังไม่ได้ตั้งค่า SUPABASE_URL และ SUPABASE_ANON_KEY ในไฟล์");
+    sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{
+      auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+    });
+    return sb;
+  }
+  function throwDb(action,error){
+    if(!error)return;
+    console.error(action,error);
+    throw new Error(action+" ไม่สำเร็จ: "+(error.message||"unknown error"));
+  }
+
+  /* ---------- helpers ---------- */
+  var $=function(s,r){return (r||document).querySelector(s);};
+  var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
+  function uid(){return "id"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+  function token(){return Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,6);}
+  function nowISO(){return new Date().toISOString();}
+  function pad(n){return (n<10?"0":"")+n;}
+  function ymd(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+  function parseYMD(s){var p=s.split("-");return new Date(+p[0],+p[1]-1,+p[2]);}
+  function addDays(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x;}
+  function addMonths(d,n){var x=new Date(d.getFullYear(),d.getMonth()+n,1);return x;}
+  function startOfWeek(d){var x=new Date(d);x.setDate(x.getDate()-x.getDay());x.setHours(0,0,0,0);return x;}
+  function sameDay(a,b){return ymd(a)===ymd(b);}
+  function esc(s){return (s==null?"":String(s)).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+  function toMin(t){if(!t)return null;var p=t.split(":");return (+p[0])*60+(+p[1]);}
+  function fmtTime(t){if(!t)return "";return t;}
+
+  var TH_MONTHS=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+  var TH_MON_SHORT=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+  var TH_WD=["อา","จ","อ","พ","พฤ","ศ","ส"];
+  var TH_WD_FULL=["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
+  function beYear(d){return d.getFullYear()+543;}
+
+  var COLORS={
+    blue:{name:"ฟ้า",chip:"#DBEAFE",ink:"#1E40AF",bar:"#3B82F6"},
+    green:{name:"เขียว",chip:"#DCFCE7",ink:"#166534",bar:"#22C55E"},
+    pink:{name:"ชมพู",chip:"#FCE7F3",ink:"#9D174D",bar:"#EC4899"},
+    purple:{name:"ม่วง",chip:"#EDE9FE",ink:"#5B21B6",bar:"#8B5CF6"},
+    orange:{name:"ส้ม",chip:"#FFEDD5",ink:"#9A3412",bar:"#F97316"},
+    gray:{name:"เทา",chip:"#F1F3F6",ink:"#374151",bar:"#94A3B8"}
+  };
+  var COLOR_KEYS=["blue","green","pink","purple","orange","gray"];
+  var STATUS_TH={upcoming:"กำลังจะถึง",in_progress:"กำลังทำ",done:"เสร็จแล้ว",cancelled:"ยกเลิก"};
+  var THEME_COLORS=["#3B82F6","#8B5CF6","#EC4899","#10B981","#F59E0B","#06B6D4","#6366F1","#EF4444"];
+
+  /* ---------- state ---------- */
+  var state=null;
+
+  function seed(ownerId){
+    var today=new Date();
+    var d=function(off){return ymd(addDays(today,off));};
+    var calId="cal_"+uid();
+    var cats=[
+      {id:"c_gen",calendarId:calId,name:"งานทั่วไป",color:"gray",createdAt:nowISO(),updatedAt:nowISO()},
+      {id:"c_appt",calendarId:calId,name:"นัดหมาย",color:"blue",createdAt:nowISO(),updatedAt:nowISO()},
+      {id:"c_meet",calendarId:calId,name:"ประชุม",color:"purple",createdAt:nowISO(),updatedAt:nowISO()},
+      {id:"c_deliver",calendarId:calId,name:"ส่งงาน",color:"orange",createdAt:nowISO(),updatedAt:nowISO()},
+      {id:"c_personal",calendarId:calId,name:"ส่วนตัว",color:"pink",createdAt:nowISO(),updatedAt:nowISO()},
+      {id:"c_important",calendarId:calId,name:"สำคัญ",color:"green",createdAt:nowISO(),updatedAt:nowISO()}
+    ];
+    var ev=[
+      {title:"ประชุมทีมเช้า",date:d(0),startTime:"09:30",endTime:"10:30",categoryId:"c_meet",color:"purple",status:"upcoming",description:"สรุปงานสัปดาห์และวางแผนต่อ",isPublic:true},
+      {title:"ส่งใบเสนอราคาลูกค้า",date:d(0),startTime:"14:00",endTime:"14:30",categoryId:"c_deliver",color:"orange",status:"in_progress",description:"",isPublic:true},
+      {title:"นัดหมอฟัน",date:d(1),startTime:"11:00",endTime:"12:00",categoryId:"c_appt",color:"blue",status:"upcoming",description:"คลินิกใกล้บ้าน",isPublic:false},
+      {title:"จ่ายบิลร้าน",date:d(2),startTime:"",endTime:"",categoryId:"c_gen",color:"gray",status:"upcoming",description:"",isPublic:true},
+      {title:"เดดไลน์โปรเจกต์",date:d(3),startTime:"17:00",endTime:"18:00",categoryId:"c_important",color:"green",status:"upcoming",description:"ส่งงานรอบสุดท้าย",isPublic:true},
+      {title:"ดูหนังกับครอบครัว",date:d(5),startTime:"19:30",endTime:"22:00",categoryId:"c_personal",color:"pink",status:"upcoming",description:"",isPublic:false}
+    ].map(function(e){e.id=uid();e.calendarId=calId;e.createdAt=nowISO();e.updatedAt=nowISO();return e;});
+    return{
+      calendar:{id:calId,ownerId:ownerId||null,name:"ปฏิทินตารางงาน",description:"จัดการตารางงานและนัดหมาย",publicToken:token(),isPublicEnabled:true,themeColor:"#3B82F6",createdAt:nowISO(),updatedAt:nowISO()},
+      categories:cats,
+      events:ev
+    };
+  }
+
+  function normalizeState(s,ownerId){
+    if(!s||!s.calendar)return seed(ownerId);
+    var calId=(s.calendar.id&&s.calendar.id!=="cal1")?s.calendar.id:"cal_"+uid();
+    s.calendar.id=calId;
+    s.calendar.ownerId=ownerId||s.calendar.ownerId||null;
+    s.calendar.publicToken=s.calendar.publicToken||token();
+    s.calendar.isPublicEnabled=s.calendar.isPublicEnabled!==false;
+    s.calendar.themeColor=s.calendar.themeColor||"#3B82F6";
+    s.calendar.createdAt=s.calendar.createdAt||nowISO();
+    s.calendar.updatedAt=nowISO();
+    s.categories=(s.categories||[]).map(function(c){
+      return {id:c.id||uid(),calendarId:calId,name:c.name||"หมวดหมู่",color:c.color||"gray",createdAt:c.createdAt||nowISO(),updatedAt:c.updatedAt||nowISO()};
+    });
+    if(!s.categories.some(function(c){return c.id==="c_gen";})){
+      s.categories.unshift({id:"c_gen",calendarId:calId,name:"งานทั่วไป",color:"gray",createdAt:nowISO(),updatedAt:nowISO()});
+    }
+    s.events=(s.events||[]).map(function(e){
+      return {
+        id:e.id||uid(),calendarId:calId,title:e.title||"กิจกรรม",date:e.date||ymd(new Date()),
+        startTime:e.startTime||"",endTime:e.endTime||"",categoryId:e.categoryId||"c_gen",
+        color:e.color||"blue",status:e.status||"upcoming",description:e.description||"",
+        isPublic:e.isPublic!==false,createdAt:e.createdAt||nowISO(),updatedAt:e.updatedAt||nowISO()
+      };
+    });
+    return s;
+  }
+  function readLegacyLocalState(ownerId){
+    try{
+      var raw=window.localStorage&&window.localStorage.getItem(LEGACY_KEY);
+      if(!raw)return null;
+      return normalizeState(JSON.parse(raw),ownerId);
+    }catch(e){return null;}
+  }
+  function cloneState(s){return JSON.parse(JSON.stringify(s));}
+
+  function calendarFromRow(r){
+    return {id:r.id,ownerId:r.owner_id,name:r.name,description:r.description||"",publicToken:r.public_token,isPublicEnabled:!!r.is_public_enabled,themeColor:r.theme_color||"#3B82F6",createdAt:r.created_at,updatedAt:r.updated_at};
+  }
+  function categoryFromRow(r){
+    return {id:r.id,calendarId:r.calendar_id,name:r.name,color:r.color||"gray",createdAt:r.created_at,updatedAt:r.updated_at};
+  }
+  function eventFromRow(r){
+    return {id:r.id,calendarId:r.calendar_id,title:r.title,date:r.event_date,startTime:r.start_time?String(r.start_time).slice(0,5):"",endTime:r.end_time?String(r.end_time).slice(0,5):"",categoryId:r.category_id||"c_gen",color:r.color||"blue",status:r.status||"upcoming",description:r.description||"",isPublic:!!r.is_public,createdAt:r.created_at,updatedAt:r.updated_at};
+  }
+  function calendarToRow(c){
+    return {id:c.id,owner_id:c.ownerId||currentUser.id,name:c.name||"ปฏิทินงาน",description:c.description||"",public_token:c.publicToken||token(),is_public_enabled:c.isPublicEnabled!==false,theme_color:c.themeColor||"#3B82F6",created_at:c.createdAt||nowISO(),updated_at:c.updatedAt||nowISO()};
+  }
+  function categoryToRow(c){
+    return {id:c.id,calendar_id:c.calendarId||state.calendar.id,name:c.name||"หมวดหมู่",color:c.color||"gray",created_at:c.createdAt||nowISO(),updated_at:c.updatedAt||nowISO()};
+  }
+  function eventToRow(e){
+    return {id:e.id,calendar_id:e.calendarId||state.calendar.id,title:e.title||"กิจกรรม",event_date:e.date,start_time:e.startTime||null,end_time:e.endTime||null,category_id:e.categoryId||"c_gen",color:e.color||"blue",status:e.status||"upcoming",description:e.description||"",is_public:e.isPublic!==false,created_at:e.createdAt||nowISO(),updated_at:e.updatedAt||nowISO()};
+  }
+
+  async function loadAdminData(){
+    var client=getSupabase();
+    var owned=await client.from("calendars").select("*").eq("owner_id",currentUser.id).order("created_at",{ascending:true}).limit(1);
+    throwDb("โหลดปฏิทิน",owned.error);
+    if(!owned.data.length){
+      var initial=readLegacyLocalState(currentUser.id)||seed(currentUser.id);
+      initial=normalizeState(initial,currentUser.id);
+      await syncState(initial);
+      return initial;
+    }
+    return hydrateCalendar(calendarFromRow(owned.data[0]),false);
+  }
+  async function loadPublicData(publicToken){
+    var client=getSupabase();
+    var cal=await client.from("calendars").select("*").eq("public_token",publicToken).eq("is_public_enabled",true).maybeSingle();
+    if(cal.error&&cal.error.code!=="PGRST116")throwDb("โหลดลิงก์สาธารณะ",cal.error);
+    if(!cal.data)return null;
+    return hydrateCalendar(calendarFromRow(cal.data),true);
+  }
+  async function loadCalendarById(calendarId,publicOnly){
+    var client=getSupabase();
+    var q=client.from("calendars").select("*").eq("id",calendarId);
+    if(publicOnly)q=q.eq("is_public_enabled",true);
+    var cal=await q.maybeSingle();
+    if(cal.error&&cal.error.code!=="PGRST116")throwDb("โหลดปฏิทิน",cal.error);
+    if(!cal.data)return null;
+    return hydrateCalendar(calendarFromRow(cal.data),publicOnly);
+  }
+  async function hydrateCalendar(calendar,publicOnly){
+    var client=getSupabase();
+    var cats=await client.from("categories").select("*").eq("calendar_id",calendar.id).order("created_at",{ascending:true});
+    throwDb("โหลดหมวดหมู่",cats.error);
+    var evq=client.from("events").select("*").eq("calendar_id",calendar.id).order("event_date",{ascending:true}).order("start_time",{ascending:true});
+    if(publicOnly)evq=evq.eq("is_public",true);
+    var evs=await evq;
+    throwDb("โหลดกิจกรรม",evs.error);
+    return normalizeState({calendar:calendar,categories:(cats.data||[]).map(categoryFromRow),events:(evs.data||[]).map(eventFromRow)},calendar.ownerId);
+  }
+  async function syncState(snapshot){
+    if(!currentUser||IS_PUBLIC)return;
+    var client=getSupabase();
+    snapshot=normalizeState(snapshot,currentUser.id);
+    var cal=await client.from("calendars").upsert(calendarToRow(snapshot.calendar),{onConflict:"id"});
+    throwDb("บันทึกปฏิทิน",cal.error);
+    var catRows=snapshot.categories.map(categoryToRow);
+    if(catRows.length){
+      var cats=await client.from("categories").upsert(catRows,{onConflict:"calendar_id,id"});
+      throwDb("บันทึกหมวดหมู่",cats.error);
+    }
+    var evRows=snapshot.events.map(eventToRow);
+    if(evRows.length){
+      var evs=await client.from("events").upsert(evRows,{onConflict:"id"});
+      throwDb("บันทึกกิจกรรม",evs.error);
+    }
+    await pruneRows("events",snapshot.calendar.id,snapshot.events.map(function(e){return e.id;}));
+    await pruneRows("categories",snapshot.calendar.id,snapshot.categories.map(function(c){return c.id;}));
+  }
+  async function pruneRows(table,calendarId,keepIds){
+    var client=getSupabase();
+    var rows=await client.from(table).select("id").eq("calendar_id",calendarId);
+    throwDb("ตรวจข้อมูลที่ลบ",rows.error);
+    var stale=(rows.data||[]).filter(function(r){return keepIds.indexOf(r.id)===-1;});
+    for(var i=0;i<stale.length;i++){
+      var del=await client.from(table).delete().eq("calendar_id",calendarId).eq("id",stale[i].id);
+      throwDb("ลบข้อมูลเก่า",del.error);
+    }
+  }
+  function save(){
+    if(IS_PUBLIC||!IS_ADMIN||!state)return Promise.resolve();
+    pendingSave=cloneState(state);
+    if(saveTimer)clearTimeout(saveTimer);
+    saveTimer=setTimeout(flushSave,280);
+    return Promise.resolve();
+  }
+  async function flushSave(){
+    if(saveTimer){clearTimeout(saveTimer);saveTimer=null;}
+    if(saveInFlight)return;
+    var snap=pendingSave;
+    pendingSave=null;
+    if(!snap)return;
+    saveInFlight=true;
+    try{await syncState(snap);}
+    catch(e){console.error(e);toast("บันทึกไม่สำเร็จ: "+e.message);}
+    finally{
+      saveInFlight=false;
+      if(pendingSave)flushSave();
+    }
+  }
+
+  /* ---------- mode (admin vs public) ---------- */
+  var params=new URLSearchParams(location.search);
+  var publicParam=params.get("public");
+  var IS_PUBLIC=false;       // viewing in read-only public mode
+  var IS_ADMIN=false;        // unlocked admin (can edit)
+
+  /* ---------- runtime UI state ---------- */
+  var currentView="month";
+  var cursor=new Date();        // the date the calendar is centered on
+  var selectedDay=new Date();   // selected day for panel/day view
+  var miniCursor=new Date();    // mini calendar month
+  var searchQuery="";
+  var filters={categories:[],statuses:[],colors:[],pub:null};
+  var editingId=null;
+  var pendingDelete=null;
+  var formColor="blue";
+
+  /* ===================================================================== */
+  /* INIT                                                                  */
+  /* ===================================================================== */
+  function applyTheme(){document.documentElement.style.setProperty("--accent",state.calendar.themeColor||"#3B82F6");
+    var m=$('meta[name=theme-color]');if(m)m.setAttribute("content",state.calendar.themeColor||"#3B82F6");}
+
+  async function boot(){
+    renderBootSkeleton();
+    bindGlobal();
+    if(!window.supabase){
+      renderFatal("โหลด Supabase ไม่สำเร็จ","ตรวจการเชื่อมต่ออินเทอร์เน็ตหรือ CDN ของ Supabase แล้วลองเปิดหน้านี้ใหม่");
+      return;
+    }
+    if(!isSupabaseConfigured()){
+      renderFatal("ยังไม่ได้ตั้งค่า Supabase","ใส่ค่า SUPABASE_URL และ SUPABASE_ANON_KEY ในส่วน config ของไฟล์ก่อนใช้งาน");
+      return;
+    }
+    try{
+      var client=getSupabase();
+      if(publicParam){
+        IS_PUBLIC=true;
+        document.body.classList.add("is-public");
+        state=await loadPublicData(publicParam);
+        if(!state){renderPublicClosed();return;}
+        applyTheme();
+        startApp();
+        return;
+      }
+      var session=await client.auth.getSession();
+      if(session.error)throw session.error;
+      if(session.data&&session.data.session&&session.data.session.user){
+        currentUser=session.data.session.user;
+        IS_ADMIN=true;
+        state=await loadAdminData();
+        applyTheme();
+        startApp();
+      }else{
+        showLogin();
+      }
+    }catch(e){
+      console.error(e);
+      renderFatal("โหลดข้อมูลไม่สำเร็จ",e.message||"ลองตรวจ SQL, RLS policy และค่า Supabase config");
+    }
+  }
+
+  function renderBootSkeleton(){
+    $("#view").innerHTML='<div class="month"><div class="month-wd">'+TH_WD.map(function(w){return '<span>'+w+'</span>';}).join("")+'</div><div class="month-grid">'+Array(35).fill(0).map(function(){return '<div class="cell skel"></div>';}).join("")+'</div></div>';
+    $("#panelList").innerHTML='<div class="pl-card skel" style="height:64px"></div><div class="pl-card skel" style="height:64px"></div>';
+    $("#legend").innerHTML='<div class="lg-title">หมวดหมู่</div><div class="lg-row skel" style="height:22px;border-radius:8px"></div><div class="lg-row skel" style="height:22px;border-radius:8px"></div>';
+    renderHeader();
+  }
+
+  function showLogin(){
+    $("#login").classList.add("open");
+    $("#loginErr").textContent="";
+    $("#loginBtn").disabled=false;
+    setTimeout(function(){$("#loginEmail").focus();},120);
+  }
+
+  function renderFatal(title,msg){
+    $("#app").style.display="none";
+    $("#login").classList.add("open");
+    $(".login-card h2").textContent=title;
+    $("#loginCopy").textContent=msg;
+    $("#loginEmail").classList.add("hide");
+    $("#loginPass").classList.add("hide");
+    $("#loginBtn").classList.add("hide");
+    $("#loginErr").textContent="";
+    $("#loginHint").textContent="ดูไฟล์ supabase_calendar_schema.sql แล้วนำไปรันใน Supabase SQL Editor";
+  }
+
+  function renderPublicClosed(){
+    $("#app").style.display="none";
+    var d=document.createElement("div");
+    d.className="login open";
+    d.innerHTML='<div class="login-card glass"><div class="lg-logo"></div><h2>ลิงก์นี้ยังไม่เปิดให้ดู</h2><p>เจ้าของปฏิทินอาจปิดการแชร์หรือเปลี่ยนลิงก์ใหม่</p></div>';
+    document.body.appendChild(d);
+  }
+
+  function startApp(){
+    $("#login").classList.remove("open");
+    $("#app").style.display="";
+    $("#hTitle").textContent=state.calendar.name;
+    $("#brandName").textContent=state.calendar.name;
+    $("#hDesc").textContent=state.calendar.description||"";
+    $("#addBtn").classList.toggle("hide",IS_PUBLIC);
+    $("#fab").classList.toggle("hide",IS_PUBLIC);
+    renderAll();
+    startRealtime();
+  }
+
+  async function unlock(){
+    var email=$("#loginEmail").value.trim();
+    var pass=$("#loginPass").value;
+    if(!email||!pass){$("#loginErr").textContent="กรอกอีเมลและรหัสผ่านก่อน";return;}
+    $("#loginBtn").disabled=true;
+    $("#loginErr").textContent="กำลังเข้าสู่ระบบ...";
+    try{
+      var res=await getSupabase().auth.signInWithPassword({email:email,password:pass});
+      if(res.error)throw res.error;
+      currentUser=res.data.user;
+      IS_ADMIN=true;
+      state=await loadAdminData();
+      applyTheme();
+      startApp();
+    }catch(e){
+      console.error(e);
+      $("#loginErr").textContent=e.message||"เข้าสู่ระบบไม่สำเร็จ";
+      $("#loginPass").value="";
+      $("#loginPass").focus();
+    }finally{
+      $("#loginBtn").disabled=false;
+    }
+  }
+
+  function startRealtime(){
+    if(realtimeChannel||!state||!state.calendar||!window.supabase)return;
+    try{
+      var client=getSupabase();
+      var filter="calendar_id=eq."+state.calendar.id;
+      realtimeChannel=client.channel("calendar-"+state.calendar.id)
+        .on("postgres_changes",{event:"*",schema:"public",table:"calendars",filter:"id=eq."+state.calendar.id},scheduleRemoteRefresh)
+        .on("postgres_changes",{event:"*",schema:"public",table:"categories",filter:filter},scheduleRemoteRefresh)
+        .on("postgres_changes",{event:"*",schema:"public",table:"events",filter:filter},scheduleRemoteRefresh)
+        .subscribe();
+    }catch(e){console.warn("Realtime disabled",e);}
+  }
+  function stopRealtime(){
+    if(realtimeChannel&&sb){sb.removeChannel(realtimeChannel);}
+    realtimeChannel=null;
+  }
+  function scheduleRemoteRefresh(){
+    if(!IS_PUBLIC&&(saveInFlight||pendingSave))return;
+    if(remoteRefreshTimer)clearTimeout(remoteRefreshTimer);
+    remoteRefreshTimer=setTimeout(refreshFromServer,650);
+  }
+  async function refreshFromServer(){
+    if(!state||!state.calendar)return;
+    try{
+      var next=IS_PUBLIC?await loadPublicData(publicParam):await loadCalendarById(state.calendar.id,false);
+      if(!next){renderPublicClosed();return;}
+      state=next;
+      applyTheme();
+      $("#hTitle").textContent=state.calendar.name;
+      $("#brandName").textContent=state.calendar.name;
+      $("#hDesc").textContent=state.calendar.description||"";
+      renderAll();
+    }catch(e){console.warn("refresh failed",e);}
+  }
+
+  function canEdit(){return IS_ADMIN && !IS_PUBLIC;}
+
+  /* ===================================================================== */
+  /* DATA QUERIES                                                          */
+  /* ===================================================================== */
+  function visibleEvents(){
+    return state.events.filter(function(e){
+      if(IS_PUBLIC && !e.isPublic) return false;
+      if(searchQuery){
+        var q=searchQuery.toLowerCase();
+        var cat=catById(e.categoryId);
+        var hay=(e.title+" "+(e.description||"")+" "+(cat?cat.name:"")).toLowerCase();
+        if(hay.indexOf(q)===-1) return false;
+      }
+      if(filters.categories.length && filters.categories.indexOf(e.categoryId)===-1) return false;
+      if(filters.statuses.length && filters.statuses.indexOf(e.status)===-1) return false;
+      if(filters.colors.length && filters.colors.indexOf(e.color)===-1) return false;
+      if(filters.pub==="public" && !e.isPublic) return false;
+      if(filters.pub==="hidden" && e.isPublic) return false;
+      return true;
+    });
+  }
+  function eventsOn(dateStr){
+    return visibleEvents().filter(function(e){return e.date===dateStr;}).sort(function(a,b){
+      var ta=toMin(a.startTime),tb=toMin(b.startTime);
+      if(ta==null&&tb==null)return 0;if(ta==null)return 1;if(tb==null)return -1;return ta-tb;
+    });
+  }
+  function catById(id){for(var i=0;i<state.categories.length;i++)if(state.categories[i].id===id)return state.categories[i];return null;}
+
+  /* ===================================================================== */
+  /* RENDER                                                                */
+  /* ===================================================================== */
+  function renderAll(){renderHeader();renderSidebar();renderView();renderPanel();renderFilterPop();}
+
+  function renderHeader(){
+    var lbl;
+    if(currentView==="month"){lbl=TH_MONTHS[cursor.getMonth()]+" "+beYear(cursor);}
+    else if(currentView==="week"){var ws=startOfWeek(cursor),we=addDays(ws,6);
+      lbl=ws.getDate()+" "+TH_MON_SHORT[ws.getMonth()]+" – "+we.getDate()+" "+TH_MON_SHORT[we.getMonth()]+" "+beYear(we);}
+    else{lbl=selectedDay.getDate()+" "+TH_MONTHS[selectedDay.getMonth()]+" "+beYear(selectedDay);}
+    $("#periodLabel").textContent=lbl;
+  }
+
+  function renderSidebar(){
+    // mini month
+    var first=new Date(miniCursor.getFullYear(),miniCursor.getMonth(),1);
+    var start=startOfWeek(first);
+    $("#miniLabel").textContent=TH_MON_SHORT[miniCursor.getMonth()]+" "+beYear(miniCursor);
+    var html=TH_WD.map(function(w){return '<div class="wd">'+w+'</div>';}).join("");
+    var today=new Date();
+    for(var i=0;i<42;i++){
+      var d=addDays(start,i);
+      var cls=[];
+      if(d.getMonth()!==miniCursor.getMonth())cls.push("out");
+      if(sameDay(d,today))cls.push("today");
+      if(sameDay(d,selectedDay))cls.push("sel");
+      if(eventsOn(ymd(d)).length)cls.push("has");
+      html+='<button class="'+cls.join(" ")+'" data-mini="'+ymd(d)+'">'+d.getDate()+'</button>';
+      if(i>=34 && d.getMonth()!==miniCursor.getMonth() && d.getDay()===6)break;
+    }
+    $("#miniGrid").innerHTML=html;
+    // legend (categories)
+    var lg='<div class="lg-title">หมวดหมู่</div>';
+    lg+=state.categories.map(function(c){return '<div class="lg-row"><span class="sw" style="background:'+COLORS[c.color].bar+'"></span>'+esc(c.name)+'</div>';}).join("");
+    $("#legend").innerHTML=lg;
+  }
+
+  function renderView(){
+    var v=$("#view");
+    if(currentView==="month")v.innerHTML=monthHTML();
+    else if(currentView==="week")v.innerHTML=weekHTML();
+    else v.innerHTML=dayHTML();
+    if(currentView==="week")afterWeek();
+  }
+
+  /* ----- MONTH ----- */
+  function monthHTML(){
+    var first=new Date(cursor.getFullYear(),cursor.getMonth(),1);
+    var start=startOfWeek(first);
+    var today=new Date();
+    var wd='<div class="month-wd">'+TH_WD.map(function(w){return '<span>'+w+'</span>';}).join("")+'</div>';
+    var cells="";
+    for(var i=0;i<42;i++){
+      var d=addDays(start,i);
+      var ds=ymd(d);
+      var evs=eventsOn(ds);
+      var cls=["cell"];
+      if(d.getMonth()!==cursor.getMonth())cls.push("out");
+      if(sameDay(d,today))cls.push("today");
+      if(sameDay(d,selectedDay))cls.push("sel");
+      var chips="";
+      var max=3;
+      for(var j=0;j<Math.min(evs.length,max);j++){
+        var e=evs[j];var col=COLORS[e.color];
+        chips+='<div class="chip '+(e.status==="done"?"done":"")+'" data-ev="'+e.id+'" style="background:'+col.chip+';color:'+col.ink+'" title="'+esc(e.title)+'"><span class="cdot" style="background:'+col.bar+'"></span>'+esc(e.title)+'</div>';
+      }
+      if(evs.length>max)chips+='<div class="more">+'+(evs.length-max)+' เพิ่มเติม</div>';
+      cells+='<div class="'+cls.join(" ")+'" data-day="'+ds+'"><span class="dnum">'+d.getDate()+'</span>'+chips+'</div>';
+      if(i>=34 && d.getMonth()!==cursor.getMonth() && d.getDay()===6)break;
+    }
+    return '<div class="month">'+wd+'<div class="month-grid">'+cells+'</div></div>';
+  }
+
+  /* ----- WEEK ----- */
+  function weekHTML(){
+    var ws=startOfWeek(cursor);
+    var today=new Date();
+    var head='<div class="week-head"><div class="wcol"></div>';
+    var allday='<div class="week-allday"><div class="lbl">ทั้งวัน</div>';
+    for(var i=0;i<7;i++){
+      var d=addDays(ws,i);
+      head+='<div class="wcol '+(sameDay(d,today)?"today":"")+'" data-day="'+ymd(d)+'"><div class="wname">'+TH_WD[d.getDay()]+'</div><div class="wnum">'+d.getDate()+'</div></div>';
+      var ad=eventsOn(ymd(d)).filter(function(e){return !e.startTime;});
+      var adc="";
+      ad.forEach(function(e){var col=COLORS[e.color];adc+='<div class="chip" data-ev="'+e.id+'" style="background:'+col.chip+';color:'+col.ink+'"><span class="cdot" style="background:'+col.bar+'"></span>'+esc(e.title)+'</div>';});
+      allday+='<div class="adcell">'+adc+'</div>';
+    }
+    head+='</div>';allday+='</div>';
+    // hour grid: first column = stacked hour labels, then 7 day columns (24 hcells + absolutely-positioned timed events)
+    var grid='<div class="week-grid" id="weekGrid">';
+    grid+='<div>';
+    for(var hl=0;hl<24;hl++)grid+='<div class="hour-lbl">'+pad(hl)+':00</div>';
+    grid+='</div>';
+    for(var col=0;col<7;col++){
+      var dd=addDays(ws,col);
+      var dstr=ymd(dd);
+      grid+='<div class="day-col" data-day="'+dstr+'">';
+      for(var hh=0;hh<24;hh++)grid+='<div class="hcell"></div>';
+      // timed events
+      eventsOn(dstr).filter(function(e){return e.startTime;}).forEach(function(e){
+        var s=toMin(e.startTime),en=e.endTime?toMin(e.endTime):s+60;
+        if(en<=s)en=s+30;
+        var top=(s/60)*46, hgt=Math.max(((en-s)/60)*46,20);
+        var col2=COLORS[e.color];
+        grid+='<div class="wk-event" data-ev="'+e.id+'" style="top:'+top+'px;height:'+hgt+'px;background:'+col2.chip+';color:'+col2.ink+';border-left:3px solid '+col2.bar+'"><div>'+esc(e.title)+'</div><div class="wk-t">'+esc(e.startTime)+(e.endTime?"–"+esc(e.endTime):"")+'</div></div>';
+      });
+      grid+='</div>';
+    }
+    grid+='</div>';
+    return '<div class="week">'+head+allday+'<div class="week-scroll" id="weekScroll">'+grid+'</div></div>';
+  }
+  function afterWeek(){
+    var sc=$("#weekScroll");if(!sc)return;
+    // now line if current week
+    var ws=startOfWeek(cursor),today=new Date();
+    if(today>=ws && today<addDays(ws,7)){
+      var mins=today.getHours()*60+today.getMinutes();
+      var line=document.createElement("div");
+      line.className="nowline";line.style.top=((mins/60)*46)+"px";
+      $("#weekGrid").appendChild(line);
+    }
+    sc.scrollTop=7*46-10;
+  }
+
+  /* ----- DAY ----- */
+  function dayHTML(){
+    var ds=ymd(selectedDay);
+    var evs=eventsOn(ds);
+    var head='<div class="day-head"><span class="big">'+selectedDay.getDate()+'</span><span class="sub">'+TH_WD_FULL[selectedDay.getDay()]+'ที่ '+TH_MONTHS[selectedDay.getMonth()]+' '+beYear(selectedDay)+'</span></div>';
+    if(!evs.length){
+      return '<div class="day">'+head+emptyHTML(IS_PUBLIC?"ยังไม่มีกิจกรรมในวันนี้":"ยังไม่มีกิจกรรม", IS_PUBLIC?"":"กด “เพิ่มงาน” เพื่อเริ่มงานแรก")+'</div>';
+    }
+    var items=evs.map(function(e){
+      var col=COLORS[e.color];var cat=catById(e.categoryId);
+      var timeHTML=e.startTime?(esc(e.startTime)+(e.endTime?'<small>'+esc(e.endTime)+'</small>':"")):'<small>ทั้งวัน</small>';
+      var pvt=(!IS_PUBLIC && !e.isPublic)?'<span class="pvt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>ซ่อนจากสาธารณะ</span>':"";
+      return '<div class="tl-item"><div class="tl-time">'+timeHTML+'</div>'+
+        '<div class="tl-card" data-ev="'+e.id+'" style="border-left-color:'+col.bar+'">'+
+        '<div class="tl-title '+(e.status==="done"?"":"")+'">'+esc(e.title)+'</div>'+
+        (e.description?'<div class="tl-desc">'+esc(e.description)+'</div>':"")+
+        '<div class="tl-meta"><span class="badge b-'+e.status+'"><span class="bdot" style="background:currentColor"></span>'+STATUS_TH[e.status]+'</span>'+
+        (cat?'<span class="cat-tag"><span class="sw" style="width:9px;height:9px;border-radius:3px;background:'+COLORS[cat.color].bar+'"></span>'+esc(cat.name)+'</span>':"")+pvt+'</div>'+
+        '</div></div>';
+    }).join("");
+    return '<div class="day">'+head+'<div class="timeline">'+items+'</div></div>';
+  }
+
+  function emptyHTML(msg,sub){
+    return '<div class="empty"><div class="em-emoji">🗓️</div><p>'+esc(msg)+'</p>'+(sub?'<p class="em-sub">'+esc(sub)+'</p>':"")+'</div>';
+  }
+
+  /* ----- right panel ----- */
+  function renderPanel(){
+    $("#pdDate").textContent=TH_WD_FULL[selectedDay.getDay()];
+    $("#pdBig").textContent=selectedDay.getDate()+" "+TH_MON_SHORT[selectedDay.getMonth()]+" "+beYear(selectedDay);
+    $("#panelAdd").classList.toggle("hide",!canEdit());
+    var evs=eventsOn(ymd(selectedDay));
+    if(!evs.length){$("#panelList").innerHTML='<div class="pd-empty">'+(IS_PUBLIC?"ไม่มีกิจกรรมที่เปิดให้ดูในวันนี้":"ยังไม่มีกิจกรรมในวันนี้")+'</div>';return;}
+    $("#panelList").innerHTML=evs.map(function(e){
+      var col=COLORS[e.color];
+      var pvt=(!IS_PUBLIC && !e.isPublic)?' <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;color:var(--text-faint)"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>':"";
+      return '<div class="pl-card" data-ev="'+e.id+'" style="border-left-color:'+col.bar+'"><div class="pl-t '+(e.status==="done"?"done":"")+'">'+esc(e.title)+pvt+'</div><div class="pl-time">'+(e.startTime?esc(e.startTime)+(e.endTime?" – "+esc(e.endTime):""):"ทั้งวัน")+' · '+STATUS_TH[e.status]+'</div></div>';
+    }).join("");
+  }
+
+  /* ----- filter popover ----- */
+  function renderFilterPop(){
+    var p=$("#filterPop");
+    var catOpts=state.categories.map(function(c){return '<button class="fl-opt" data-fl="cat" data-val="'+c.id+'" aria-pressed="'+(filters.categories.indexOf(c.id)>-1)+'">'+esc(c.name)+'</button>';}).join("");
+    var stOpts=Object.keys(STATUS_TH).map(function(s){return '<button class="fl-opt" data-fl="status" data-val="'+s+'" aria-pressed="'+(filters.statuses.indexOf(s)>-1)+'">'+STATUS_TH[s]+'</button>';}).join("");
+    var clOpts=COLOR_KEYS.map(function(k){return '<button class="fl-opt" data-fl="color" data-val="'+k+'" aria-pressed="'+(filters.colors.indexOf(k)>-1)+'" style="'+(filters.colors.indexOf(k)>-1?"":"")+'"><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:'+COLORS[k].bar+';margin-right:5px"></span>'+COLORS[k].name+'</button>';}).join("");
+    var pubGroup=IS_PUBLIC?"":'<div class="fl-group"><h4>การแสดงผล</h4><div class="fl-opts"><button class="fl-opt" data-fl="pub" data-val="public" aria-pressed="'+(filters.pub==="public")+'">เปิดสาธารณะ</button><button class="fl-opt" data-fl="pub" data-val="hidden" aria-pressed="'+(filters.pub==="hidden")+'">ซ่อนสาธารณะ</button></div></div>';
+    p.innerHTML='<div class="fl-group"><h4>หมวดหมู่</h4><div class="fl-opts">'+catOpts+'</div></div>'+
+      '<div class="fl-group"><h4>สถานะ</h4><div class="fl-opts">'+stOpts+'</div></div>'+
+      '<div class="fl-group"><h4>สี</h4><div class="fl-opts">'+clOpts+'</div></div>'+
+      pubGroup+
+      '<button class="fl-reset" id="flReset">ล้างตัวกรอง</button>';
+    var n=filters.categories.length+filters.statuses.length+filters.colors.length+(filters.pub?1:0);
+    $("#filterCount").textContent=n?" ("+n+")":"";
+  }
+
+  /* ===================================================================== */
+  /* EVENT MODAL                                                           */
+  /* ===================================================================== */
+  function fillCatSelect(){
+    $("#fCat").innerHTML=state.categories.map(function(c){return '<option value="'+c.id+'">'+esc(c.name)+'</option>';}).join("");
+  }
+  function fillColorRow(){
+    $("#fColors").innerHTML=COLOR_KEYS.map(function(k){return '<button type="button" class="color-dot" data-color="'+k+'" aria-pressed="'+(k===formColor)+'" aria-label="'+COLORS[k].name+'" style="background:'+COLORS[k].bar+'"></button>';}).join("");
+  }
+  function openEventModal(ev,presetDate){
+    if(!canEdit())return;
+    editingId=ev?ev.id:null;
+    $("#emTitle").textContent=ev?"แก้ไขกิจกรรม":"เพิ่มกิจกรรม";
+    $("#emDelete").classList.toggle("hide",!ev);
+    fillCatSelect();
+    $("#fTitle").value=ev?ev.title:"";
+    $("#fDate").value=ev?ev.date:(presetDate||ymd(selectedDay));
+    $("#fStart").value=ev?(ev.startTime||""):"";
+    $("#fEnd").value=ev?(ev.endTime||""):"";
+    $("#fCat").value=ev?ev.categoryId:state.categories[0].id;
+    $("#fStatus").value=ev?ev.status:"upcoming";
+    formColor=ev?ev.color:"blue";fillColorRow();
+    $("#fDesc").value=ev?(ev.description||""):"";
+    setSwitch($("#fPublic"),ev?ev.isPublic:true);
+    openModal("#eventModal");
+    setTimeout(function(){$("#fTitle").focus();},120);
+  }
+  function saveEvent(){
+    var title=$("#fTitle").value.trim();
+    if(!title){$("#fTitle").focus();toast("ใส่ชื่อกิจกรรมก่อนนะ");return;}
+    var data={
+      title:title,date:$("#fDate").value||ymd(selectedDay),
+      startTime:$("#fStart").value||"",endTime:$("#fEnd").value||"",
+      categoryId:$("#fCat").value,color:formColor,status:$("#fStatus").value,
+      description:$("#fDesc").value.trim(),
+      isPublic:$("#fPublic").getAttribute("aria-checked")==="true",
+      updatedAt:nowISO()
+    };
+    if(data.startTime&&data.endTime&&toMin(data.endTime)<toMin(data.startTime)){toast("เวลาสิ้นสุดต้องหลังเวลาเริ่ม");return;}
+    if(editingId){
+      var e=state.events.filter(function(x){return x.id===editingId;})[0];
+      if(e)for(var k in data)e[k]=data[k];
+      toast("บันทึกการแก้ไขแล้ว");
+    } else {
+      data.id=uid();data.calendarId=state.calendar.id;data.createdAt=nowISO();
+      state.events.push(data);
+      toast("เพิ่มกิจกรรมแล้ว");
+    }
+    save();selectedDay=parseYMD(data.date);syncCursorToSelected();closeModal("#eventModal");renderAll();
+  }
+  function deleteEvent(id){
+    state.events=state.events.filter(function(e){return e.id!==id;});
+    save();renderAll();toast("ลบกิจกรรมแล้ว");
+  }
+  function syncCursorToSelected(){
+    if(currentView==="month")cursor=new Date(selectedDay.getFullYear(),selectedDay.getMonth(),1);
+    else cursor=new Date(selectedDay);
+    miniCursor=new Date(selectedDay.getFullYear(),selectedDay.getMonth(),1);
+  }
+
+  /* ===================================================================== */
+  /* DETAIL MODAL                                                          */
+  /* ===================================================================== */
+  function openDetail(id){
+    var e=state.events.filter(function(x){return x.id===id;})[0];if(!e)return;
+    var col=COLORS[e.color];var cat=catById(e.categoryId);
+    $("#dmStrip").style.background=col.bar;
+    $("#dmTitle").textContent=e.title;
+    var meta='<span class="badge b-'+e.status+'"><span class="bdot" style="background:currentColor"></span>'+STATUS_TH[e.status]+'</span>';
+    if(cat)meta+='<span class="cat-tag" style="padding:3px 0"><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:'+COLORS[cat.color].bar+'"></span>'+esc(cat.name)+'</span>';
+    if(!IS_PUBLIC && !e.isPublic)meta+='<span class="pvt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>ซ่อนจากสาธารณะ</span>';
+    $("#dmMeta").innerHTML=meta;
+    var dd=parseYMD(e.date);
+    var lines='<div class="detail-line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>'+TH_WD_FULL[dd.getDay()]+'ที่ '+dd.getDate()+' '+TH_MONTHS[dd.getMonth()]+' '+beYear(dd)+'</div>';
+    if(e.startTime)lines+='<div class="detail-line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'+esc(e.startTime)+(e.endTime?" – "+esc(e.endTime):"")+'</div>';
+    if(e.description)lines+='<div class="detail-line desc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>'+esc(e.description)+'</span></div>';
+    $("#dmLines").innerHTML=lines;
+    $("#dmFoot").classList.toggle("hide",!canEdit());
+    $("#dmEdit").setAttribute("data-id",id);
+    openModal("#detailModal");
+  }
+
+  /* ===================================================================== */
+  /* MODAL plumbing + focus trap                                           */
+  /* ===================================================================== */
+  var openModalId=null;var lastFocus=null;
+  function openModal(sel){
+    lastFocus=document.activeElement;
+    $("#scrim").classList.add("open");
+    $(sel).classList.add("open");
+    openModalId=sel;
+  }
+  function closeModal(sel){
+    $(sel||openModalId).classList.remove("open");
+    if(!$$(".modal.open").length){$("#scrim").classList.remove("open");}
+    openModalId=null;
+    if(lastFocus&&lastFocus.focus)try{lastFocus.focus();}catch(e){}
+  }
+  function trapTab(e){
+    if(!openModalId||e.key!=="Tab")return;
+    var m=$(openModalId);var f=$$('button,input,select,textarea,[tabindex]:not([tabindex="-1"])',m).filter(function(el){return !el.disabled&&el.offsetParent!==null;});
+    if(!f.length)return;var first=f[0],last=f[f.length-1];
+    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+  }
+
+  /* switch helper */
+  function setSwitch(el,on){el.setAttribute("aria-checked",on?"true":"false");}
+  function toggleSwitch(el){setSwitch(el,el.getAttribute("aria-checked")!=="true");}
+
+  /* ===================================================================== */
+  /* TOAST + CONFIRM                                                       */
+  /* ===================================================================== */
+  function toast(msg){
+    var t=document.createElement("div");t.className="toast";
+    t.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>'+esc(msg);
+    $("#toastWrap").appendChild(t);
+    setTimeout(function(){t.style.opacity="0";t.style.transition="opacity .3s";setTimeout(function(){t.remove();},300);},2200);
+  }
+  function confirmDelete(msg,onYes){
+    pendingDelete=onYes;
+    $("#cfMsg").textContent=msg;
+    setConfirmYes("ลบ",true);
+    $("#scrim").classList.add("open");
+    $("#confirm").classList.add("open");
+  }
+  function setConfirmYes(label,danger){
+    var y=$("#cfYes");y.textContent=label;
+    y.classList.toggle("btn-danger",!!danger);
+    y.classList.toggle("btn-primary",!danger);
+  }
+  function closeConfirm(){$("#confirm").classList.remove("open");if(!$$(".modal.open").length)$("#scrim").classList.remove("open");pendingDelete=null;setConfirmYes("ลบ",true);}
+
+  /* ===================================================================== */
+  /* SETTINGS                                                              */
+  /* ===================================================================== */
+  function openSettings(){
+    if(IS_PUBLIC)return;
+    $("#setName").value=state.calendar.name;
+    $("#setDesc").value=state.calendar.description||"";
+    setSwitch($("#pubSwitch"),state.calendar.isPublicEnabled);
+    $("#pubLink").value=publicUrl();
+    $("#setPass").value="";
+    renderThemeDots();renderCatList();
+    setNav("settings");
+    $("#settingsPage").classList.add("open");
+  }
+  function closeSettings(){$("#settingsPage").classList.remove("open");setNav("calendar");}
+  function publicUrl(){return location.origin+location.pathname+"?public="+state.calendar.publicToken;}
+  function renderThemeDots(){
+    $("#themeDots").innerHTML=THEME_COLORS.map(function(c){return '<button class="theme-dot" data-theme="'+c+'" aria-pressed="'+(c.toLowerCase()===state.calendar.themeColor.toLowerCase())+'" style="background:'+c+'" aria-label="สี '+c+'"></button>';}).join("");
+  }
+  function renderCatList(){
+    $("#catList").innerHTML=state.categories.map(function(c){
+      var dots=COLOR_KEYS.map(function(k){return '<span class="cat-sw" data-catcolor="'+c.id+'" data-val="'+k+'" style="background:'+COLORS[k].bar+';opacity:'+(k===c.color?"1":".35")+'" title="'+COLORS[k].name+'"></span>';}).join("");
+      var canDel=c.id!=="c_gen";
+      return '<div class="cat-item"><input type="text" value="'+esc(c.name)+'" data-catname="'+c.id+'" aria-label="ชื่อหมวดหมู่">'+
+        '<div style="display:flex;gap:4px;align-items:center">'+dots+'</div>'+
+        (canDel?'<button class="icon-btn" data-catdel="'+c.id+'" aria-label="ลบหมวดหมู่" style="width:30px;height:30px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>':'<span style="width:30px"></span>')+
+        '</div>';
+    }).join("");
+  }
+
+  /* ===================================================================== */
+  /* GLOBAL EVENT BINDING                                                  */
+  /* ===================================================================== */
+  function setView(v){
+    currentView=v;
+    $$(".seg button").forEach(function(b){b.setAttribute("aria-pressed",b.getAttribute("data-view")===v?"true":"false");});
+    renderHeader();renderView();
+  }
+  function setNav(n){
+    $$('.nav-list button,[data-nav]').forEach(function(b){
+      if(b.getAttribute("data-nav"))b.classList.toggle("active",b.getAttribute("data-nav")===n);
+    });
+  }
+  function navStep(dir){
+    if(currentView==="month")cursor=addMonths(cursor,dir);
+    else if(currentView==="week")cursor=addDays(cursor,dir*7);
+    else{selectedDay=addDays(selectedDay,dir);cursor=new Date(selectedDay);miniCursor=new Date(selectedDay.getFullYear(),selectedDay.getMonth(),1);}
+    renderAll();
+  }
+  function goToday(){var t=new Date();cursor=new Date(t);selectedDay=new Date(t);miniCursor=new Date(t.getFullYear(),t.getMonth(),1);renderAll();}
+
+  function pickDay(ds){
+    selectedDay=parseYMD(ds);
+    miniCursor=new Date(selectedDay.getFullYear(),selectedDay.getMonth(),1);
+    if(window.matchMedia("(max-width:760px)").matches && currentView==="month"){
+      // mobile: jump to day view as a "bottom sheet"-like detail of that day
+      setView("day");
+    }
+    renderAll();
+  }
+
+  function bindGlobal(){
+    // login
+    $("#loginBtn").addEventListener("click",unlock);
+    $("#loginEmail").addEventListener("keydown",function(e){if(e.key==="Enter")unlock();});
+    $("#loginPass").addEventListener("keydown",function(e){if(e.key==="Enter")unlock();});
+
+    // nav period
+    $("#prevBtn").addEventListener("click",function(){navStep(-1);});
+    $("#nextBtn").addEventListener("click",function(){navStep(1);});
+    $("#todayBtn").addEventListener("click",goToday);
+    $("#miniPrev").addEventListener("click",function(){miniCursor=addMonths(miniCursor,-1);renderSidebar();});
+    $("#miniNext").addEventListener("click",function(){miniCursor=addMonths(miniCursor,1);renderSidebar();});
+
+    // view switch
+    $$(".seg button").forEach(function(b){b.addEventListener("click",function(){setView(b.getAttribute("data-view"));});});
+
+    // add buttons
+    $("#addBtn").addEventListener("click",function(){openEventModal(null);});
+    $("#fab").addEventListener("click",function(){openEventModal(null);});
+    $("#panelAdd").addEventListener("click",function(){openEventModal(null);});
+
+    // nav (sidebar + botnav)
+    $$('[data-nav]').forEach(function(b){b.addEventListener("click",function(){
+      var n=b.getAttribute("data-nav");
+      if(n==="settings")openSettings();else closeSettings();
+    });});
+
+    // search
+    $("#searchInput").addEventListener("input",function(){searchQuery=this.value.trim();renderView();renderSidebar();renderPanel();});
+
+    // filter popover
+    $("#filterBtn").addEventListener("click",function(e){
+      e.stopPropagation();
+      var p=$("#filterPop");var open=p.classList.toggle("open");
+      $("#filterBtn").setAttribute("aria-expanded",open?"true":"false");
+    });
+    document.addEventListener("click",function(e){
+      var p=$("#filterPop");
+      if(p.classList.contains("open") && !p.contains(e.target) && e.target.id!=="filterBtn" && !$("#filterBtn").contains(e.target)){
+        p.classList.remove("open");$("#filterBtn").setAttribute("aria-expanded","false");
+      }
+    });
+    $("#filterPop").addEventListener("click",function(e){
+      var b=e.target.closest("[data-fl]");if(b){
+        var type=b.getAttribute("data-fl"),val=b.getAttribute("data-val");
+        if(type==="cat")toggleArr(filters.categories,val);
+        else if(type==="status")toggleArr(filters.statuses,val);
+        else if(type==="color")toggleArr(filters.colors,val);
+        else if(type==="pub")filters.pub=(filters.pub===val?null:val);
+        renderFilterPop();renderView();renderSidebar();renderPanel();return;
+      }
+      if(e.target.id==="flReset"){filters={categories:[],statuses:[],colors:[],pub:null};renderFilterPop();renderView();renderSidebar();renderPanel();}
+    });
+
+    // event delegation: clicks on day cells / event chips
+    $("#view").addEventListener("click",function(e){
+      var evEl=e.target.closest("[data-ev]");
+      if(evEl){var id=evEl.getAttribute("data-ev");openDetail(id);return;}
+      var dayEl=e.target.closest("[data-day]");
+      if(dayEl){pickDay(dayEl.getAttribute("data-day"));}
+    });
+    $("#view").addEventListener("dblclick",function(e){
+      if(!canEdit())return;
+      if(e.target.closest("[data-ev]"))return;
+      var dayEl=e.target.closest("[data-day]");
+      if(dayEl){selectedDay=parseYMD(dayEl.getAttribute("data-day"));openEventModal(null);}
+    });
+    $("#panelList").addEventListener("click",function(e){var el=e.target.closest("[data-ev]");if(el)openDetail(el.getAttribute("data-ev"));});
+    $("#miniGrid").addEventListener("click",function(e){var b=e.target.closest("[data-mini]");if(b)pickDay(b.getAttribute("data-mini"));});
+
+    // event modal
+    $("#emClose").addEventListener("click",function(){closeModal("#eventModal");});
+    $("#emCancel").addEventListener("click",function(){closeModal("#eventModal");});
+    $("#emSave").addEventListener("click",saveEvent);
+    $("#emDelete").addEventListener("click",function(){
+      var id=editingId;
+      confirmDelete("ต้องการลบกิจกรรมนี้หรือไม่?",function(){closeModal("#eventModal");deleteEvent(id);});
+    });
+    $("#fColors").addEventListener("click",function(e){var b=e.target.closest("[data-color]");if(!b)return;formColor=b.getAttribute("data-color");fillColorRow();});
+    $("#fPublic").addEventListener("click",function(){toggleSwitch(this);});
+    $("#fPublic").addEventListener("keydown",function(e){if(e.key===" "||e.key==="Enter"){e.preventDefault();toggleSwitch(this);}});
+
+    // detail modal
+    $("#dmClose").addEventListener("click",function(){closeModal("#detailModal");});
+    $("#dmEdit").addEventListener("click",function(){
+      var id=this.getAttribute("data-id");var ev=state.events.filter(function(x){return x.id===id;})[0];
+      closeModal("#detailModal");openEventModal(ev);
+    });
+
+    // scrim closes top modal
+    $("#scrim").addEventListener("click",function(){
+      if($("#confirm").classList.contains("open")){closeConfirm();return;}
+      if(openModalId)closeModal(openModalId);
+    });
+
+    // confirm
+    $("#cfNo").addEventListener("click",closeConfirm);
+    $("#cfYes").addEventListener("click",function(){var fn=pendingDelete;closeConfirm();if(fn)fn();});
+
+    // keyboard: ESC + tab trap
+    document.addEventListener("keydown",function(e){
+      if(e.key==="Escape"){
+        if($("#confirm").classList.contains("open")){closeConfirm();return;}
+        if(openModalId){closeModal(openModalId);return;}
+        if($("#filterPop").classList.contains("open")){$("#filterPop").classList.remove("open");return;}
+        if($("#settingsPage").classList.contains("open")){closeSettings();return;}
+      }
+      trapTab(e);
+    });
+
+    // ===== settings =====
+    $("#settingsBack").addEventListener("click",closeSettings);
+    $("#setName").addEventListener("input",function(){state.calendar.name=this.value||"ปฏิทินงาน";state.calendar.updatedAt=nowISO();save();$("#hTitle").textContent=state.calendar.name;$("#brandName").textContent=state.calendar.name;});
+    $("#setDesc").addEventListener("input",function(){state.calendar.description=this.value;state.calendar.updatedAt=nowISO();save();$("#hDesc").textContent=this.value;});
+    $("#pubSwitch").addEventListener("click",function(){toggleSwitch(this);state.calendar.isPublicEnabled=this.getAttribute("aria-checked")==="true";state.calendar.updatedAt=nowISO();save();});
+    $("#pubSwitch").addEventListener("keydown",function(e){if(e.key===" "||e.key==="Enter"){e.preventDefault();this.click();}});
+    $("#copyLink").addEventListener("click",function(){
+      var url=$("#pubLink").value;
+      if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(function(){toast("คัดลอกลิงก์แล้ว");},function(){fallbackCopy(url);});}
+      else fallbackCopy(url);
+    });
+    $("#regenLink").addEventListener("click",function(){
+      confirmReplace("สร้างลิงก์ใหม่? ลิงก์เดิมจะใช้ไม่ได้","สร้างลิงก์ใหม่",function(){
+        state.calendar.publicToken=token();state.calendar.updatedAt=nowISO();save();$("#pubLink").value=publicUrl();toast("สร้างลิงก์ใหม่แล้ว");
+      });
+    });
+    $("#themeDots").addEventListener("click",function(e){var b=e.target.closest("[data-theme]");if(!b)return;state.calendar.themeColor=b.getAttribute("data-theme");state.calendar.updatedAt=nowISO();save();applyTheme();renderThemeDots();});
+    $("#addCatBtn").addEventListener("click",addCategory);
+    $("#newCatName").addEventListener("keydown",function(e){if(e.key==="Enter")addCategory();});
+    $("#catList").addEventListener("input",function(e){var inp=e.target.closest("[data-catname]");if(!inp)return;var id=inp.getAttribute("data-catname");var c=catById(id);if(c){c.name=inp.value;c.updatedAt=nowISO();save();renderSidebar();}});
+    $("#catList").addEventListener("click",function(e){
+      var sw=e.target.closest("[data-catcolor]");
+      if(sw){var id=sw.getAttribute("data-catcolor");var c=catById(id);if(c){c.color=sw.getAttribute("data-val");c.updatedAt=nowISO();save();renderCatList();renderSidebar();}return;}
+      var del=e.target.closest("[data-catdel]");
+      if(del){var did=del.getAttribute("data-catdel");
+        confirmReplace("ลบหมวดหมู่นี้? งานในหมวดนี้จะกลับไปเป็น “งานทั่วไป”","ลบหมวดหมู่",function(){deleteCategory(did);});}
+    });
+    $("#savePassBtn").addEventListener("click",async function(){
+      var v=$("#setPass").value.trim();
+      if(!v){toast("ใส่รหัสใหม่ก่อนนะ");return;}
+      this.disabled=true;
+      try{
+        var res=await getSupabase().auth.updateUser({password:v});
+        if(res.error)throw res.error;
+        $("#setPass").value="";
+        toast("เปลี่ยนรหัสผ่านแล้ว");
+      }catch(err){console.error(err);toast("เปลี่ยนรหัสไม่สำเร็จ: "+(err.message||"ลองใหม่อีกครั้ง"));}
+      finally{this.disabled=false;}
+    });
+    $("#logoutBtn").addEventListener("click",async function(){
+      this.disabled=true;
+      try{
+        await flushSave();
+        stopRealtime();
+        await getSupabase().auth.signOut();
+        currentUser=null;IS_ADMIN=false;state=null;
+        location.reload();
+      }catch(err){console.error(err);toast("ออกจากระบบไม่สำเร็จ");this.disabled=false;}
+    });
+  }
+
+  function toggleArr(arr,val){var i=arr.indexOf(val);if(i>-1)arr.splice(i,1);else arr.push(val);}
+  function fallbackCopy(text){try{var ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();toast("คัดลอกลิงก์แล้ว");}catch(e){toast("คัดลอกไม่สำเร็จ ลองคัดลอกเอง");}}
+
+  // a non-destructive confirm reuse (primary button instead of danger)
+  function confirmReplace(msg,yesLabel,onYes){
+    pendingDelete=onYes;
+    $("#cfMsg").textContent=msg;
+    setConfirmYes(yesLabel||"ยืนยัน",false);
+    $("#scrim").classList.add("open");$("#confirm").classList.add("open");
+  }
+
+  function addCategory(){
+    var name=$("#newCatName").value.trim();if(!name)return;
+    var used=state.categories.map(function(c){return c.color;});
+    var color=COLOR_KEYS.filter(function(k){return used.indexOf(k)===-1;})[0]||COLOR_KEYS[Math.floor(Math.random()*COLOR_KEYS.length)];
+    state.categories.push({id:uid(),calendarId:state.calendar.id,name:name,color:color,createdAt:nowISO(),updatedAt:nowISO()});
+    save();$("#newCatName").value="";renderCatList();renderSidebar();renderFilterPop();toast("เพิ่มหมวดหมู่แล้ว");
+  }
+  function deleteCategory(id){
+    state.events.forEach(function(e){if(e.categoryId===id)e.categoryId="c_gen";});
+    state.categories=state.categories.filter(function(c){return c.id!==id;});
+    save();renderCatList();renderSidebar();renderFilterPop();renderView();renderPanel();toast("ลบหมวดหมู่แล้ว");
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
