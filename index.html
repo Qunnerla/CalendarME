@@ -126,6 +126,8 @@
   .seg{display:flex;gap:2px;padding:3px;background:rgba(255,255,255,.5);border:1px solid var(--border);border-radius:13px}
   .seg button{padding:7px 14px;font-size:13px;font-weight:600;color:var(--text-dim);border-radius:10px;transition:all .18s var(--ease)}
   .seg button[aria-pressed="true"]{background:#fff;color:var(--accent-ink);box-shadow:var(--shadow-sm)}
+  .schedule-mode-switch{flex:none}
+  .schedule-mode-switch button{white-space:nowrap}
 
   .btn{
     display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:12px;font-size:13.5px;font-weight:600;
@@ -225,6 +227,7 @@
   .chip .cdot{width:6px;height:6px;border-radius:50%;flex:none}
   .chip.done{text-decoration:line-through;opacity:.65}
   .more{font-size:10.5px;font-weight:600;color:var(--text-dim);padding:1px 6px}
+  .cell-thumb{width:100%;height:36px;object-fit:cover;border-radius:10px;margin-top:1px;border:1px solid rgba(255,255,255,.72);box-shadow:var(--shadow-sm)}
 
   /* Week view */
   .week{display:flex;flex-direction:column;height:100%}
@@ -266,6 +269,7 @@
   .tl-card .tl-title{font-size:15px;font-weight:600;letter-spacing:-.01em}
   .tl-card .tl-desc{font-size:13px;color:var(--text-dim)}
   .tl-card .tl-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px}
+  .tl-image{width:100%;max-height:160px;object-fit:cover;border-radius:13px;margin-bottom:7px;border:1px solid var(--border)}
 
   .badge{font-size:11px;font-weight:600;padding:2.5px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:5px}
   .badge .bdot{width:6px;height:6px;border-radius:50%}
@@ -274,6 +278,9 @@
   .b-done{background:#DCFCE7;color:#166534}
   .b-cancelled{background:#F3F4F6;color:#6B7280}
   .b-custom{background:#EEF2FF;color:#3730A3}
+  .b-paid{background:#DCFCE7;color:#166534}
+  .b-deposit{background:#DBEAFE;color:#1E40AF}
+  .b-unpaid{background:#FCE7F3;color:#9D174D}
   .cat-tag{font-size:11px;font-weight:600;color:var(--text-dim);display:inline-flex;align-items:center;gap:5px}
 
   /* hidden-from-public marker (admin only) */
@@ -293,6 +300,7 @@
   .pl-card:hover{transform:translateX(2px);box-shadow:var(--shadow-sm)}
   .pl-card .pl-t{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px}
   .pl-card .pl-time{font-size:12px;color:var(--text-dim);margin-top:2px}
+  .pl-img{width:100%;height:92px;object-fit:cover;border-radius:13px;margin-bottom:8px;border:1px solid var(--border)}
 
   /* empty state */
   .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;color:var(--text-dim);padding:32px 16px;height:100%}
@@ -370,6 +378,7 @@
   .detail-line svg{width:17px;height:17px;color:var(--text-faint);flex:none}
   .detail-line.desc{color:var(--text-dim);align-items:flex-start}
   .detail-line.desc svg{margin-top:2px}
+  .detail-image{width:100%;max-height:320px;object-fit:cover;border-radius:18px;border:1px solid var(--border);box-shadow:var(--shadow-sm);margin:6px 0 12px}
 
   /* ===== Settings page ===== */
   .settings-page{position:fixed;inset:0;z-index:90;overflow-y:auto;padding:18px;display:none;background:linear-gradient(160deg,#F7FAFF 0%,#EEF3FF 45%,#F4F0FF 100%);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
@@ -419,6 +428,10 @@
     border:1px solid var(--border);box-shadow:var(--shadow-sm);background:rgba(255,255,255,.45);
   }
   .status-list,.class-list{display:flex;flex-direction:column;gap:8px}
+  .animation-fields.hide{display:none}
+  .event-image-editor{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .event-image-preview{width:112px;height:82px;border-radius:16px;background:rgba(255,255,255,.55);border:1px solid var(--border);box-shadow:var(--shadow-sm);display:grid;place-items:center;color:var(--text-faint);font-size:12px;font-weight:700;overflow:hidden;flex:none}
+  .event-image-preview.has-image{background-position:center;background-size:cover;background-repeat:no-repeat;color:transparent}
   .status-item{display:grid;grid-template-columns:minmax(96px,.7fr) minmax(150px,1fr) auto auto;gap:10px;align-items:center;padding:9px 10px;border-radius:12px;background:rgba(255,255,255,.5);border:1px solid var(--border)}
   .status-preview{font-size:12.5px;font-weight:700;color:var(--text-dim);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .status-item input{width:100%;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.65);border:1px solid var(--border);font-size:13.5px}
@@ -1057,6 +1070,10 @@
   <!-- Header -->
   <header class="header glass">
     <div class="cal-title"><h1 id="hTitle">ปฏิทินงาน</h1><p id="hDesc"></p></div>
+    <div class="seg schedule-mode-switch hide" id="scheduleModeSwitch" role="group" aria-label="โหมดตาราง">
+      <button type="button" data-schedule-mode="general" aria-pressed="true">ตารางทั่วไป</button>
+      <button type="button" data-schedule-mode="animation" aria-pressed="false">ตารางอนิเมชั่น</button>
+    </div>
     <div class="nav-period">
       <button class="icon-btn" id="prevBtn" aria-label="ย้อนกลับ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></button>
       <span class="period-label" id="periodLabel"></span>
@@ -1226,7 +1243,7 @@
       <div class="field"><label>เวลาเริ่ม</label><input type="time" id="fStart"></div>
       <div class="field"><label>เวลาสิ้นสุด</label><input type="time" id="fEnd"></div>
     </div>
-    <div class="row2">
+    <div class="row2" id="generalEventFields">
       <div class="field"><label>หมวดหมู่</label><select id="fCat"></select></div>
       <div class="field" id="statusField"><label>สถานะ</label><select id="fStatus">
         <option value="upcoming">กำลังจะถึง</option>
@@ -1237,6 +1254,27 @@
     </div>
     <div class="field"><label>สี</label><div class="color-row" id="fColors"></div></div>
     <div class="field"><label>รายละเอียด</label><textarea id="fDesc" placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"></textarea></div>
+    <div class="animation-fields hide" id="animationFields">
+      <div class="row2">
+        <div class="field"><label>สถานะชำระเงิน</label><select id="fPaymentStatus">
+          <option value="unpaid">ยังไม่จ่าย</option>
+          <option value="deposit">มัดจำ</option>
+          <option value="paid">จ่ายแล้ว</option>
+        </select></div>
+        <div class="field"><label>กลุ่ม / ลูกค้า</label><input type="text" id="fGroupName" placeholder="เช่น ทีมอนิเมชั่น A"></div>
+      </div>
+      <div class="field">
+        <label>ภาพแนบ</label>
+        <div class="event-image-editor">
+          <div class="event-image-preview" id="eventImagePreview">ไม่มีภาพ</div>
+          <div class="logo-actions">
+            <input type="file" id="eventImageInput" accept="image/*" class="hide">
+            <button class="btn btn-soft" id="chooseEventImageBtn" type="button">เลือกรูป</button>
+            <button class="btn btn-ghost" id="clearEventImageBtn" type="button">ลบรูป</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="toggle">
       <div><div class="tg-txt">แสดงในหน้าสาธารณะ</div><div class="tg-sub">ปิด = เห็นเฉพาะแอดมิน คนเปิดลิงก์จะไม่เห็น</div></div>
       <div class="switch" id="fPublic" role="switch" aria-checked="true" tabindex="0" aria-label="แสดงในหน้าสาธารณะ"></div>
@@ -1446,6 +1484,18 @@
     var labels=state&&state.calendar&&state.calendar.statusLabels;
     return (opt&&opt.label)||(labels&&labels[key])||STATUS_TH[key]||key;
   }
+  function normalizeScheduleMode(mode){
+    return mode==="animation"?"animation":"general";
+  }
+  function eventMode(e){
+    return normalizeScheduleMode(e&&e.mode);
+  }
+  function paymentLabel(key){
+    return PAYMENT_TH[key]||PAYMENT_TH.unpaid;
+  }
+  function paymentBadgeClass(key){
+    return key==="paid"?"paid":(key==="deposit"?"deposit":"unpaid");
+  }
   function normalizeStatusLabels(labels){
     var base=defaultStatusLabels();
     labels=labels||{};
@@ -1516,6 +1566,8 @@
   var COLOR_KEYS=["blue","green","pink","purple","orange","gray"];
   var STATUS_TH={upcoming:"กำลังจะถึง",in_progress:"กำลังทำ",done:"เสร็จแล้ว",cancelled:"ยกเลิก"};
   var STATUS_KEYS=["upcoming","in_progress","done","cancelled"];
+  var PAYMENT_TH={paid:"จ่ายแล้ว",deposit:"มัดจำ",unpaid:"ยังไม่จ่าย"};
+  var PAYMENT_KEYS=["paid","deposit","unpaid"];
   var THEME_COLORS=["#3B82F6","#8B5CF6","#EC4899","#10B981","#F59E0B","#06B6D4","#6366F1","#EF4444"];
   var DEFAULT_BG_GRADIENT_LIGHT=["#F8FBFF","#F4F0FF","#ECFDF5"];
   var DEFAULT_BG_GRADIENT_DARK=["#121826","#232042","#123B3A"];
@@ -1612,6 +1664,10 @@
         id:e.id||uid(),calendarId:calId,title:e.title||"กิจกรรม",date:e.date||ymd(new Date()),
         startTime:e.startTime||"",endTime:e.endTime||"",categoryId:e.categoryId||"c_gen",
         color:e.color||"blue",status:e.status||"upcoming",description:e.description||"",
+        mode:normalizeScheduleMode(e.mode),
+        paymentStatus:(PAYMENT_KEYS.indexOf(e.paymentStatus)>-1?e.paymentStatus:"unpaid"),
+        groupName:e.groupName||"",
+        imageDataUrl:e.imageDataUrl||"",
         isPublic:e.isPublic!==false,createdAt:e.createdAt||nowISO(),updatedAt:e.updatedAt||nowISO()
       };
     });
@@ -1647,7 +1703,7 @@
     return {id:r.id,calendarId:r.calendar_id,name:r.name,color:r.color||"gray",createdAt:r.created_at,updatedAt:r.updated_at};
   }
   function eventFromRow(r){
-    return {id:r.id,calendarId:r.calendar_id,title:r.title,date:r.event_date,startTime:r.start_time?String(r.start_time).slice(0,5):"",endTime:r.end_time?String(r.end_time).slice(0,5):"",categoryId:r.category_id||"c_gen",color:r.color||"blue",status:r.status||"upcoming",description:r.description||"",isPublic:!!r.is_public,createdAt:r.created_at,updatedAt:r.updated_at};
+    return {id:r.id,calendarId:r.calendar_id,title:r.title,date:r.event_date,startTime:r.start_time?String(r.start_time).slice(0,5):"",endTime:r.end_time?String(r.end_time).slice(0,5):"",categoryId:r.category_id||"c_gen",color:r.color||"blue",status:r.status||"upcoming",description:r.description||"",mode:normalizeScheduleMode(r.event_mode),paymentStatus:PAYMENT_KEYS.indexOf(r.payment_status)>-1?r.payment_status:"unpaid",groupName:r.group_name||"",imageDataUrl:r.image_data_url||"",isPublic:!!r.is_public,createdAt:r.created_at,updatedAt:r.updated_at};
   }
   function calendarToRow(c,includeExtra){
     var row={id:c.id,owner_id:c.ownerId||currentUser.id,name:c.name||"ปฏิทินงาน",description:c.description||"",public_token:c.publicToken||token(),is_public_enabled:c.isPublicEnabled!==false,theme_color:c.themeColor||"#3B82F6",created_at:c.createdAt||nowISO(),updated_at:c.updatedAt||nowISO()};
@@ -1668,8 +1724,15 @@
   function categoryToRow(c){
     return {id:c.id,calendar_id:c.calendarId||state.calendar.id,name:c.name||"หมวดหมู่",color:c.color||"gray",created_at:c.createdAt||nowISO(),updated_at:c.updatedAt||nowISO()};
   }
-  function eventToRow(e){
-    return {id:e.id,calendar_id:e.calendarId||state.calendar.id,title:e.title||"กิจกรรม",event_date:e.date,start_time:e.startTime||null,end_time:e.endTime||null,category_id:e.categoryId||"c_gen",color:e.color||"blue",status:e.status||"upcoming",description:e.description||"",is_public:e.isPublic!==false,created_at:e.createdAt||nowISO(),updated_at:e.updatedAt||nowISO()};
+  function eventToRow(e,includeExtra){
+    var row={id:e.id,calendar_id:e.calendarId||state.calendar.id,title:e.title||"กิจกรรม",event_date:e.date,start_time:e.startTime||null,end_time:e.endTime||null,category_id:e.categoryId||"c_gen",color:e.color||"blue",status:e.status||"upcoming",description:e.description||"",is_public:e.isPublic!==false,created_at:e.createdAt||nowISO(),updated_at:e.updatedAt||nowISO()};
+    if(includeExtra!==false){
+      row.event_mode=eventMode(e);
+      row.payment_status=PAYMENT_KEYS.indexOf(e.paymentStatus)>-1?e.paymentStatus:"unpaid";
+      row.group_name=e.groupName||"";
+      row.image_data_url=e.imageDataUrl||"";
+    }
+    return row;
   }
 
   async function loadAdminData(){
@@ -1730,9 +1793,18 @@
       var cats=await client.from("categories").upsert(catRows,{onConflict:"calendar_id,id"});
       throwDb("บันทึกหมวดหมู่",cats.error);
     }
-    var evRows=snapshot.events.map(eventToRow);
+    var evRows=snapshot.events.map(function(e){return eventToRow(e,eventExtraColumnsSupported);});
     if(evRows.length){
       var evs=await client.from("events").upsert(evRows,{onConflict:"id"});
+      if(evs.error&&isMissingEventExtraColumn(evs.error)){
+        eventExtraColumnsSupported=false;
+        if(!eventExtraWarned){
+          eventExtraWarned=true;
+          toast("บันทึกงานได้ แต่โหมดอนิเมชั่น/ภาพแนบต้องอัปเดต schema ก่อน sync ข้ามเครื่อง");
+        }
+        evRows=snapshot.events.map(function(e){return eventToRow(e,false);});
+        evs=await client.from("events").upsert(evRows,{onConflict:"id"});
+      }
       throwDb("บันทึกกิจกรรม",evs.error);
     }
     await pruneRows("events",snapshot.calendar.id,snapshot.events.map(function(e){return e.id;}));
@@ -1741,6 +1813,10 @@
   function isMissingCalendarExtraColumn(error){
     var msg=(error&&((error.message||"")+" "+(error.details||"")+" "+(error.hint||""))).toLowerCase();
     return !!msg && (msg.indexOf("logo_data_url")>-1 || msg.indexOf("show_statuses")>-1 || msg.indexOf("status_labels_json")>-1 || msg.indexOf("status_options_json")>-1 || msg.indexOf("public_start_month")>-1 || msg.indexOf("public_end_month")>-1 || msg.indexOf("month_colors_json")>-1 || msg.indexOf("appearance_mode")>-1 || msg.indexOf("bg_gradient_json")>-1 || msg.indexOf("class_schedule_json")>-1 || msg.indexOf("schema cache")>-1);
+  }
+  function isMissingEventExtraColumn(error){
+    var msg=(error&&((error.message||"")+" "+(error.details||"")+" "+(error.hint||""))).toLowerCase();
+    return !!msg && (msg.indexOf("event_mode")>-1 || msg.indexOf("payment_status")>-1 || msg.indexOf("group_name")>-1 || msg.indexOf("image_data_url")>-1 || msg.indexOf("schema cache")>-1);
   }
   async function pruneRows(table,calendarId,keepIds){
     var client=getSupabase();
@@ -1788,17 +1864,23 @@
   var selectedDay=new Date();   // selected day for panel/day view
   var miniCursor=new Date();    // mini calendar month
   var searchQuery="";
-  var filters={categories:[],statuses:[],colors:[],pub:null};
+  var filters={categories:[],statuses:[],colors:[],pub:null,payments:[],groups:[]};
   var editingId=null;
   var editingClassId=null;
   var pendingDelete=null;
   var formColor="blue";
   var calendarExtraColumnsSupported=true;
   var calendarExtraWarned=false;
+  var eventExtraColumnsSupported=true;
+  var eventExtraWarned=false;
   var monthScrollRaf=0;
   var monthScrollTimer=null;
   var suppressMonthScrollSync=false;
   var lastRealtimeDay="";
+  var currentScheduleMode=normalizeScheduleMode(params.get("mode")||"general");
+  if(!publicParam){try{currentScheduleMode=normalizeScheduleMode((window.localStorage&&window.localStorage.getItem("calendarme_schedule_mode"))||currentScheduleMode);}catch(e){}}
+  var editingEventMode="general";
+  var formImageDataUrl="";
 
   /* ===================================================================== */
   /* INIT                                                                  */
@@ -2040,16 +2122,19 @@
   /* DATA QUERIES                                                          */
   /* ===================================================================== */
   function eventPassesFilters(e){
+      if(eventMode(e)!==currentScheduleMode) return false;
       if(IS_PUBLIC && !e.isPublic) return false;
       if(IS_PUBLIC && !inPublicMonthRange(e.date)) return false;
       if(searchQuery){
         var q=searchQuery.toLowerCase();
         var cat=catById(e.categoryId);
-        var hay=(e.title+" "+(e.description||"")+" "+(e.code||"")+" "+(cat?cat.name:"")).toLowerCase();
+        var hay=(e.title+" "+(e.description||"")+" "+(e.code||"")+" "+(e.groupName||"")+" "+paymentLabel(e.paymentStatus)+" "+(cat?cat.name:"")).toLowerCase();
         if(hay.indexOf(q)===-1) return false;
       }
-      if(filters.categories.length && filters.categories.indexOf(e.categoryId)===-1) return false;
-      if(state.calendar.showStatuses && filters.statuses.length && filters.statuses.indexOf(e.status)===-1) return false;
+      if(currentScheduleMode==="general" && filters.categories.length && filters.categories.indexOf(e.categoryId)===-1) return false;
+      if(currentScheduleMode==="general" && state.calendar.showStatuses && filters.statuses.length && filters.statuses.indexOf(e.status)===-1) return false;
+      if(currentScheduleMode==="animation" && filters.payments.length && filters.payments.indexOf(e.paymentStatus||"unpaid")===-1) return false;
+      if(currentScheduleMode==="animation" && filters.groups.length && filters.groups.indexOf(e.groupName||"")===-1) return false;
       if(filters.colors.length && filters.colors.indexOf(e.color)===-1) return false;
       if(filters.pub==="public" && !e.isPublic) return false;
       if(filters.pub==="hidden" && e.isPublic) return false;
@@ -2059,6 +2144,7 @@
     return state.events.filter(eventPassesFilters);
   }
   function classEventsOn(dateStr){
+    if(currentScheduleMode!=="general")return [];
     if(!state||!state.calendar||!state.calendar.classSchedule)return [];
     var d=parseYMD(dateStr);
     return state.calendar.classSchedule.filter(function(c){
@@ -2077,6 +2163,7 @@
         endTime:c.endTime||"",
         categoryId:"c_class",
         color:c.color||"green",
+        mode:"general",
         status:"upcoming",
         description:(c.code?("รหัสวิชา "+c.code):""),
         isPublic:c.isPublic!==false,
@@ -2117,6 +2204,27 @@
       lbl=ws.getDate()+" "+TH_MON_SHORT[ws.getMonth()]+" – "+we.getDate()+" "+TH_MON_SHORT[we.getMonth()]+" "+beYear(we);}
     else{lbl=selectedDay.getDate()+" "+TH_MONTHS[selectedDay.getMonth()]+" "+beYear(selectedDay);}
     $("#periodLabel").textContent=lbl;
+    renderScheduleModeSwitch();
+  }
+  function renderScheduleModeSwitch(){
+    var sw=$("#scheduleModeSwitch");
+    if(!sw)return;
+    sw.classList.toggle("hide",!canEdit());
+    $$("[data-schedule-mode]",sw).forEach(function(b){
+      b.setAttribute("aria-pressed",b.getAttribute("data-schedule-mode")===currentScheduleMode?"true":"false");
+    });
+    document.body.setAttribute("data-schedule-mode",currentScheduleMode);
+  }
+  function setScheduleMode(mode){
+    mode=normalizeScheduleMode(mode);
+    if(mode===currentScheduleMode)return;
+    currentScheduleMode=mode;
+    filters={categories:[],statuses:[],colors:[],pub:null,payments:[],groups:[]};
+    if(currentView!=="month")currentView="month";
+    try{if(!IS_PUBLIC)window.localStorage&&window.localStorage.setItem("calendarme_schedule_mode",mode);}catch(e){}
+    syncCursorToSelected();
+    renderAll();
+    var link=$("#pubLink");if(link)link.value=publicUrl();
   }
 
   function renderSidebar(){
@@ -2137,9 +2245,16 @@
       if(i>=34 && d.getMonth()!==miniCursor.getMonth() && d.getDay()===6)break;
     }
     $("#miniGrid").innerHTML=html;
-    // legend (categories)
-    var lg='<div class="lg-title">หมวดหมู่</div>';
-    lg+=state.categories.map(function(c){return '<div class="lg-row"><span class="sw" style="background:'+COLORS[c.color].bar+'"></span>'+esc(c.name)+'</div>';}).join("");
+    // legend
+    var lg;
+    if(currentScheduleMode==="animation"){
+      var payColors={paid:"#22C55E",deposit:"#3B82F6",unpaid:"#EC4899"};
+      lg='<div class="lg-title">สถานะชำระเงิน</div>';
+      lg+=PAYMENT_KEYS.map(function(k){return '<div class="lg-row"><span class="sw" style="background:'+payColors[k]+'"></span>'+esc(paymentLabel(k))+'</div>';}).join("");
+    }else{
+      lg='<div class="lg-title">หมวดหมู่</div>';
+      lg+=state.categories.map(function(c){return '<div class="lg-row"><span class="sw" style="background:'+COLORS[c.color].bar+'"></span>'+esc(c.name)+'</div>';}).join("");
+    }
     $("#legend").innerHTML=lg;
   }
 
@@ -2191,6 +2306,8 @@
       if(sameDay(d,today))cls.push("today");
       if(sameDay(d,selectedDay))cls.push("sel");
       var chips="";
+      var thumb=evs.filter(function(x){return eventMode(x)==="animation" && x.imageDataUrl;})[0];
+      if(thumb)chips+='<img class="cell-thumb" src="'+esc(thumb.imageDataUrl)+'" alt="">';
       var max=3;
       for(var j=0;j<Math.min(evs.length,max);j++){
         var e=evs[j];var col=COLORS[e.color];
@@ -2323,11 +2440,14 @@
       var timeHTML=e.startTime?(esc(e.startTime)+(e.endTime?'<small>'+esc(e.endTime)+'</small>':"")):'<small>ทั้งวัน</small>';
       var pvt=(!IS_PUBLIC && !e.isPublic)?'<span class="pvt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>ซ่อนจากสาธารณะ</span>':"";
       var meta=[];
-      if(state.calendar.showStatuses)meta.push('<span class="badge b-'+statusBadgeClass(e.status)+'"><span class="bdot" style="background:currentColor"></span>'+esc(statusLabel(e.status))+'</span>');
-      if(cat&&!e.isClass)meta.push('<span class="cat-tag"><span class="sw" style="width:9px;height:9px;border-radius:3px;background:'+COLORS[cat.color].bar+'"></span>'+esc(cat.name)+'</span>');
+      if(eventMode(e)==="animation")meta.push('<span class="badge b-'+paymentBadgeClass(e.paymentStatus)+'"><span class="bdot" style="background:currentColor"></span>'+esc(paymentLabel(e.paymentStatus))+'</span>');
+      else if(state.calendar.showStatuses)meta.push('<span class="badge b-'+statusBadgeClass(e.status)+'"><span class="bdot" style="background:currentColor"></span>'+esc(statusLabel(e.status))+'</span>');
+      if(eventMode(e)==="general"&&cat&&!e.isClass)meta.push('<span class="cat-tag"><span class="sw" style="width:9px;height:9px;border-radius:3px;background:'+COLORS[cat.color].bar+'"></span>'+esc(cat.name)+'</span>');
+      if(eventMode(e)==="animation"&&e.groupName)meta.push('<span class="cat-tag">'+esc(e.groupName)+'</span>');
       if(pvt)meta.push(pvt);
       return '<div class="tl-item"><div class="tl-time">'+timeHTML+'</div>'+
         '<div class="tl-card" data-ev="'+e.id+'" style="border-left-color:'+col.bar+'">'+
+        (eventMode(e)==="animation"&&e.imageDataUrl?'<img class="tl-image" src="'+esc(e.imageDataUrl)+'" alt="">':"")+
         '<div class="tl-title '+(e.status==="done"?"":"")+'">'+esc(e.title)+'</div>'+
         (e.description?'<div class="tl-desc">'+esc(e.description)+'</div>':"")+
         (meta.length?'<div class="tl-meta">'+meta.join("")+'</div>':"")+
@@ -2359,8 +2479,11 @@
       var col=COLORS[e.color];
       var pvt=(!IS_PUBLIC && !e.isPublic)?' <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;color:var(--text-faint)"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>':"";
       var info=e.startTime?esc(e.startTime)+(e.endTime?" – "+esc(e.endTime):""):"ทั้งวัน";
-      if(state.calendar.showStatuses)info+=' · '+esc(statusLabel(e.status));
-      return '<div class="pl-card" data-ev="'+e.id+'" style="border-left-color:'+col.bar+'"><div class="pl-t '+(e.status==="done"?"done":"")+'">'+esc(e.title)+pvt+'</div><div class="pl-time">'+info+'</div></div>';
+      if(eventMode(e)==="animation"){
+        info+=' · '+esc(paymentLabel(e.paymentStatus));
+        if(e.groupName)info+=' · '+esc(e.groupName);
+      }else if(state.calendar.showStatuses)info+=' · '+esc(statusLabel(e.status));
+      return '<div class="pl-card" data-ev="'+e.id+'" style="border-left-color:'+col.bar+'">'+(eventMode(e)==="animation"&&e.imageDataUrl?'<img class="pl-img" src="'+esc(e.imageDataUrl)+'" alt="">':"")+'<div class="pl-t '+(e.status==="done"?"done":"")+'">'+esc(e.title)+pvt+'</div><div class="pl-time">'+info+'</div></div>';
     }).join("");
   }
 
@@ -2369,14 +2492,18 @@
     var p=$("#filterPop");
     var catOpts=state.categories.map(function(c){return '<button class="fl-opt" data-fl="cat" data-val="'+c.id+'" aria-pressed="'+(filters.categories.indexOf(c.id)>-1)+'">'+esc(c.name)+'</button>';}).join("");
     var stOpts=enabledStatusOptions().map(function(s){return '<button class="fl-opt" data-fl="status" data-val="'+s.id+'" aria-pressed="'+(filters.statuses.indexOf(s.id)>-1)+'">'+esc(s.label)+'</button>';}).join("");
+    var payOpts=PAYMENT_KEYS.map(function(k){return '<button class="fl-opt" data-fl="payment" data-val="'+k+'" aria-pressed="'+(filters.payments.indexOf(k)>-1)+'">'+esc(paymentLabel(k))+'</button>';}).join("");
+    var groups=Array.from(new Set(state.events.filter(function(e){return eventMode(e)==="animation" && (e.groupName||"").trim();}).map(function(e){return e.groupName.trim();}))).sort();
+    var groupOpts=groups.map(function(g){return '<button class="fl-opt" data-fl="group" data-val="'+esc(g)+'" aria-pressed="'+(filters.groups.indexOf(g)>-1)+'">'+esc(g)+'</button>';}).join("");
     var clOpts=COLOR_KEYS.map(function(k){return '<button class="fl-opt" data-fl="color" data-val="'+k+'" aria-pressed="'+(filters.colors.indexOf(k)>-1)+'" style="'+(filters.colors.indexOf(k)>-1?"":"")+'"><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:'+COLORS[k].bar+';margin-right:5px"></span>'+COLORS[k].name+'</button>';}).join("");
     var pubGroup=IS_PUBLIC?"":'<div class="fl-group"><h4>การแสดงผล</h4><div class="fl-opts"><button class="fl-opt" data-fl="pub" data-val="public" aria-pressed="'+(filters.pub==="public")+'">เปิดสาธารณะ</button><button class="fl-opt" data-fl="pub" data-val="hidden" aria-pressed="'+(filters.pub==="hidden")+'">ซ่อนสาธารณะ</button></div></div>';
-    p.innerHTML='<div class="fl-group"><h4>หมวดหมู่</h4><div class="fl-opts">'+catOpts+'</div></div>'+
-      (state.calendar.showStatuses&&stOpts?'<div class="fl-group"><h4>สถานะ</h4><div class="fl-opts">'+stOpts+'</div></div>':"")+
+    p.innerHTML=(currentScheduleMode==="general"?'<div class="fl-group"><h4>หมวดหมู่</h4><div class="fl-opts">'+catOpts+'</div></div>'+
+      (state.calendar.showStatuses&&stOpts?'<div class="fl-group"><h4>สถานะ</h4><div class="fl-opts">'+stOpts+'</div></div>':""):'<div class="fl-group"><h4>สถานะชำระเงิน</h4><div class="fl-opts">'+payOpts+'</div></div>'+
+      (groupOpts?'<div class="fl-group"><h4>กลุ่ม</h4><div class="fl-opts">'+groupOpts+'</div></div>':""))+
       '<div class="fl-group"><h4>สี</h4><div class="fl-opts">'+clOpts+'</div></div>'+
       pubGroup+
       '<button class="fl-reset" id="flReset">ล้างตัวกรอง</button>';
-    var n=filters.categories.length+(state.calendar.showStatuses?filters.statuses.length:0)+filters.colors.length+(filters.pub?1:0);
+    var n=(currentScheduleMode==="general"?(filters.categories.length+(state.calendar.showStatuses?filters.statuses.length:0)):(filters.payments.length+filters.groups.length))+filters.colors.length+(filters.pub?1:0);
     $("#filterCount").textContent=n?" ("+n+")":"";
   }
 
@@ -2394,14 +2521,37 @@
   function fillColorRow(){
     $("#fColors").innerHTML=COLOR_KEYS.map(function(k){return '<button type="button" class="color-dot" data-color="'+k+'" aria-pressed="'+(k===formColor)+'" aria-label="'+COLORS[k].name+'" style="background:'+COLORS[k].bar+'"></button>';}).join("");
   }
+  function renderEventImagePreview(){
+    var p=$("#eventImagePreview");if(!p)return;
+    p.classList.toggle("has-image",!!formImageDataUrl);
+    if(formImageDataUrl){
+      p.style.backgroundImage='url("'+formImageDataUrl.replace(/"/g,"%22")+'")';
+      p.textContent="";
+    }else{
+      p.style.removeProperty("background-image");
+      p.textContent="ไม่มีภาพ";
+    }
+    $("#clearEventImageBtn").classList.toggle("hide",!formImageDataUrl);
+  }
+  function updateEventModeFields(){
+    var isAnimation=editingEventMode==="animation";
+    $("#generalEventFields").classList.toggle("hide",isAnimation);
+    $("#animationFields").classList.toggle("hide",!isAnimation);
+    $("#emTitle").textContent=(editingId?"แก้ไข":"เพิ่ม")+(isAnimation?"งานอนิเมชั่น":"กิจกรรม");
+    var titleLabel=$("#fTitle").closest(".field").querySelector("label");
+    if(titleLabel)titleLabel.textContent=isAnimation?"ชื่องานอนิเมชั่น":"ชื่อกิจกรรม";
+    $("#fTitle").placeholder=isAnimation?"เช่น อนิเมชั่นโปรเจกต์ EP.02":"เช่น ประชุมทีม";
+  }
   function openEventModal(ev,presetDate){
     if(!canEdit())return;
     editingId=ev?ev.id:null;
-    $("#emTitle").textContent=ev?"แก้ไขกิจกรรม":"เพิ่มกิจกรรม";
+    editingEventMode=ev?eventMode(ev):currentScheduleMode;
+    formImageDataUrl=ev?(ev.imageDataUrl||""):"";
+    updateEventModeFields();
     $("#emDelete").classList.toggle("hide",!ev);
     fillCatSelect();
     fillStatusSelect();
-    $("#statusField").classList.toggle("hide",!state.calendar.showStatuses);
+    $("#statusField").classList.toggle("hide",!state.calendar.showStatuses || editingEventMode==="animation");
     $("#fTitle").value=ev?ev.title:"";
     $("#fDate").value=ev?ev.date:(presetDate||ymd(selectedDay));
     $("#fStart").value=ev?(ev.startTime||""):"";
@@ -2414,6 +2564,9 @@
     $("#fStatus").value=ev?ev.status:"upcoming";
     formColor=ev?ev.color:"blue";fillColorRow();
     $("#fDesc").value=ev?(ev.description||""):"";
+    $("#fPaymentStatus").value=ev&&PAYMENT_KEYS.indexOf(ev.paymentStatus)>-1?ev.paymentStatus:"unpaid";
+    $("#fGroupName").value=ev?(ev.groupName||""):"";
+    renderEventImagePreview();
     setSwitch($("#fPublic"),ev?ev.isPublic:true);
     openModal("#eventModal");
     setTimeout(function(){$("#fTitle").focus();},120);
@@ -2424,8 +2577,12 @@
     var data={
       title:title,date:$("#fDate").value||ymd(selectedDay),
       startTime:$("#fStart").value||"",endTime:$("#fEnd").value||"",
-      categoryId:$("#fCat").value,color:formColor,status:$("#fStatus").value||"upcoming",
+      categoryId:editingEventMode==="animation"?"c_gen":$("#fCat").value,color:formColor,status:editingEventMode==="animation"?"upcoming":($("#fStatus").value||"upcoming"),
       description:$("#fDesc").value.trim(),
+      mode:editingEventMode,
+      paymentStatus:$("#fPaymentStatus").value||"unpaid",
+      groupName:$("#fGroupName").value.trim(),
+      imageDataUrl:formImageDataUrl||"",
       isPublic:$("#fPublic").getAttribute("aria-checked")==="true",
       updatedAt:nowISO()
     };
@@ -2514,13 +2671,16 @@
     $("#dmStrip").style.background=col.bar;
     $("#dmTitle").textContent=e.title;
     var meta="";
-    if(state.calendar.showStatuses)meta+='<span class="badge b-'+statusBadgeClass(e.status)+'"><span class="bdot" style="background:currentColor"></span>'+esc(statusLabel(e.status))+'</span>';
-    if(cat&&!e.isClass)meta+='<span class="cat-tag" style="padding:3px 0"><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:'+COLORS[cat.color].bar+'"></span>'+esc(cat.name)+'</span>';
+    if(eventMode(e)==="animation")meta+='<span class="badge b-'+paymentBadgeClass(e.paymentStatus)+'"><span class="bdot" style="background:currentColor"></span>'+esc(paymentLabel(e.paymentStatus))+'</span>';
+    else if(state.calendar.showStatuses)meta+='<span class="badge b-'+statusBadgeClass(e.status)+'"><span class="bdot" style="background:currentColor"></span>'+esc(statusLabel(e.status))+'</span>';
+    if(eventMode(e)==="general"&&cat&&!e.isClass)meta+='<span class="cat-tag" style="padding:3px 0"><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:'+COLORS[cat.color].bar+'"></span>'+esc(cat.name)+'</span>';
+    if(eventMode(e)==="animation"&&e.groupName)meta+='<span class="cat-tag" style="padding:3px 0">'+esc(e.groupName)+'</span>';
     if(!IS_PUBLIC && !e.isPublic)meta+='<span class="pvt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>ซ่อนจากสาธารณะ</span>';
     $("#dmMeta").innerHTML=meta;
     $("#dmMeta").classList.toggle("hide",!meta);
     var dd=parseYMD(e.date);
-    var lines='<div class="detail-line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>'+TH_WD_FULL[dd.getDay()]+'ที่ '+dd.getDate()+' '+TH_MONTHS[dd.getMonth()]+' '+beYear(dd)+'</div>';
+    var lines=(eventMode(e)==="animation"&&e.imageDataUrl?'<img class="detail-image" src="'+esc(e.imageDataUrl)+'" alt="ภาพแนบ '+esc(e.title)+'">':"")+
+      '<div class="detail-line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>'+TH_WD_FULL[dd.getDay()]+'ที่ '+dd.getDate()+' '+TH_MONTHS[dd.getMonth()]+' '+beYear(dd)+'</div>';
     if(e.startTime)lines+='<div class="detail-line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'+esc(e.startTime)+(e.endTime?" – "+esc(e.endTime):"")+'</div>';
     if(e.isClass&&e.code)lines+='<div class="detail-line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/></svg>รหัสวิชา '+esc(e.code)+'</div>';
     if(e.description&&!e.isClass)lines+='<div class="detail-line desc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>'+esc(e.description)+'</span></div>';
@@ -2711,7 +2871,7 @@
     state.calendar.updatedAt=nowISO();
     save();renderStatusList();renderFilterPop();renderView();renderPanel();
   }
-  function publicUrl(){return location.origin+location.pathname+"?public="+state.calendar.publicToken;}
+  function publicUrl(){return location.origin+location.pathname+"?public="+state.calendar.publicToken+"&mode="+currentScheduleMode;}
   function renderThemeDots(){
     $("#themeDots").innerHTML=THEME_COLORS.map(function(c){return '<button class="theme-dot" data-theme="'+c+'" aria-pressed="'+(c.toLowerCase()===state.calendar.themeColor.toLowerCase())+'" style="background:'+c+'" aria-label="สี '+c+'"></button>';}).join("");
   }
@@ -2796,7 +2956,7 @@
   /* ===================================================================== */
   function setView(v){
     currentView=v;
-    $$(".seg button").forEach(function(b){b.setAttribute("aria-pressed",b.getAttribute("data-view")===v?"true":"false");});
+    $$("[data-view]").forEach(function(b){b.setAttribute("aria-pressed",b.getAttribute("data-view")===v?"true":"false");});
     renderHeader();renderView();
   }
   function setNav(n){
@@ -2854,7 +3014,11 @@
     $("#miniNext").addEventListener("click",function(){focusMonth(addMonths(miniCursor,1),1);});
 
     // view switch
-    $$(".seg button").forEach(function(b){b.addEventListener("click",function(){setView(b.getAttribute("data-view"));});});
+    $$("[data-view]").forEach(function(b){b.addEventListener("click",function(){setView(b.getAttribute("data-view"));});});
+    $("#scheduleModeSwitch").addEventListener("click",function(e){
+      var b=e.target.closest("[data-schedule-mode]");if(!b)return;
+      setScheduleMode(b.getAttribute("data-schedule-mode"));
+    });
 
     // add buttons
     $("#addBtn").addEventListener("click",function(){openEventModal(null);});
@@ -2888,10 +3052,12 @@
         if(type==="cat")toggleArr(filters.categories,val);
         else if(type==="status")toggleArr(filters.statuses,val);
         else if(type==="color")toggleArr(filters.colors,val);
+        else if(type==="payment")toggleArr(filters.payments,val);
+        else if(type==="group")toggleArr(filters.groups,val);
         else if(type==="pub")filters.pub=(filters.pub===val?null:val);
         renderFilterPop();renderView();renderSidebar();renderPanel();return;
       }
-      if(e.target.id==="flReset"){filters={categories:[],statuses:[],colors:[],pub:null};renderFilterPop();renderView();renderSidebar();renderPanel();}
+      if(e.target.id==="flReset"){filters={categories:[],statuses:[],colors:[],pub:null,payments:[],groups:[]};renderFilterPop();renderView();renderSidebar();renderPanel();}
     });
 
     // event delegation: clicks on day cells / event chips
@@ -2919,6 +3085,16 @@
       confirmDelete("ต้องการลบกิจกรรมนี้หรือไม่?",function(){closeModal("#eventModal");deleteEvent(id);});
     });
     $("#fColors").addEventListener("click",function(e){var b=e.target.closest("[data-color]");if(!b)return;formColor=b.getAttribute("data-color");fillColorRow();});
+    $("#chooseEventImageBtn").addEventListener("click",function(){$("#eventImageInput").click();});
+    $("#eventImageInput").addEventListener("change",function(){
+      var file=this.files&&this.files[0];if(!file)return;
+      resizeLogo(file).then(function(dataUrl){
+        formImageDataUrl=dataUrl;
+        renderEventImagePreview();
+      }).catch(function(err){console.error(err);toast(err.message||"เลือกรูปไม่สำเร็จ");});
+      this.value="";
+    });
+    $("#clearEventImageBtn").addEventListener("click",function(){formImageDataUrl="";renderEventImagePreview();});
     $("#fPublic").addEventListener("click",function(){toggleSwitch(this);});
     $("#fPublic").addEventListener("keydown",function(e){if(e.key===" "||e.key==="Enter"){e.preventDefault();toggleSwitch(this);}});
 
