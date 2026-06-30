@@ -6,6 +6,8 @@
 <meta name="theme-color" content="#3B82F6">
 <meta property="og:image" content="CMD.png">
 <title>ปฏิทินตารางงาน</title>
+<link rel="icon" type="image/png" href="CMD.png">
+<link rel="apple-touch-icon" href="CMD.png">
 <link rel="preload" as="image" href="CMD.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,6 +40,7 @@
     --ease:cubic-bezier(.22,.61,.36,1);
     --font:"Inter","Noto Sans Thai",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     --safe-b:env(safe-area-inset-bottom,0px);
+    --app-logo-image:url("CMD.png");
   }
   *,*::before,*::after{box-sizing:border-box}
   html,body{height:100%;overscroll-behavior:none;touch-action:manipulation}
@@ -146,8 +149,9 @@
   .brand{display:flex;align-items:center;gap:10px;padding:2px 4px 6px}
   .brand-logo,.lg-logo{
     width:30px;height:30px;border-radius:9px;
-    background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 50%,#a78bfa));
-    background-position:center;background-size:cover;background-repeat:no-repeat;
+    background-color:#fff;
+    background-image:var(--app-logo-image),linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 50%,#a78bfa));
+    background-position:center,center;background-size:cover,cover;background-repeat:no-repeat,no-repeat;
     box-shadow:var(--shadow-sm);flex:none;
   }
   .brand-logo.has-image,.lg-logo.has-image{background-color:#fff;background-image:var(--logo-image)}
