@@ -1261,7 +1261,14 @@
           <option value="deposit">มัดจำ</option>
           <option value="paid">จ่ายแล้ว</option>
         </select></div>
-        <div class="field"><label>กลุ่ม / ลูกค้า</label><input type="text" id="fGroupName" placeholder="เช่น ทีมอนิเมชั่น A"></div>
+        <div class="field"><label>สถานะงาน</label><select id="fWorkStatus">
+          <option value="upcoming">รอดำเนินการ</option>
+          <option value="in_progress">กำลังทำ</option>
+          <option value="done">เสร็จแล้ว</option>
+        </select></div>
+      </div>
+      <div class="field">
+        <label>กลุ่ม / ลูกค้า</label><input type="text" id="fGroupName" placeholder="เช่น ทีมอนิเมชั่น A">
       </div>
       <div class="field">
         <label>ภาพแนบ</label>
@@ -1487,14 +1494,22 @@
   function normalizeScheduleMode(mode){
     return mode==="animation"?"animation":"general";
   }
+  function inferScheduleModeFromEvent(e){
+    if(e&&e.mode)return normalizeScheduleMode(e.mode);
+    if(e&&(e.imageDataUrl||e.image_data_url||e.groupName||e.group_name||(e.paymentStatus&&e.paymentStatus!=="unpaid")||(e.payment_status&&e.payment_status!=="unpaid")))return "animation";
+    return "general";
+  }
   function eventMode(e){
-    return normalizeScheduleMode(e&&e.mode);
+    return inferScheduleModeFromEvent(e);
   }
   function paymentLabel(key){
     return PAYMENT_TH[key]||PAYMENT_TH.unpaid;
   }
   function paymentBadgeClass(key){
     return key==="paid"?"paid":(key==="deposit"?"deposit":"unpaid");
+  }
+  function animationStatusLabel(key){
+    return ANIMATION_STATUS_TH[key]||ANIMATION_STATUS_TH.upcoming;
   }
   function normalizeStatusLabels(labels){
     var base=defaultStatusLabels();
@@ -1566,6 +1581,7 @@
   var COLOR_KEYS=["blue","green","pink","purple","orange","gray"];
   var STATUS_TH={upcoming:"กำลังจะถึง",in_progress:"กำลังทำ",done:"เสร็จแล้ว",cancelled:"ยกเลิก"};
   var STATUS_KEYS=["upcoming","in_progress","done","cancelled"];
+  var ANIMATION_STATUS_TH={upcoming:"รอดำเนินการ",in_progress:"กำลังทำ",done:"เสร็จแล้ว"};
   var PAYMENT_TH={paid:"จ่ายแล้ว",deposit:"มัดจำ",unpaid:"ยังไม่จ่าย"};
   var PAYMENT_KEYS=["paid","deposit","unpaid"];
   var THEME_COLORS=["#3B82F6","#8B5CF6","#EC4899","#10B981","#F59E0B","#06B6D4","#6366F1","#EF4444"];
@@ -1664,7 +1680,7 @@
         id:e.id||uid(),calendarId:calId,title:e.title||"กิจกรรม",date:e.date||ymd(new Date()),
         startTime:e.startTime||"",endTime:e.endTime||"",categoryId:e.categoryId||"c_gen",
         color:e.color||"blue",status:e.status||"upcoming",description:e.description||"",
-        mode:normalizeScheduleMode(e.mode),
+        mode:inferScheduleModeFromEvent(e),
         paymentStatus:(PAYMENT_KEYS.indexOf(e.paymentStatus)>-1?e.paymentStatus:"unpaid"),
         groupName:e.groupName||"",
         imageDataUrl:e.imageDataUrl||"",
@@ -1703,7 +1719,7 @@
     return {id:r.id,calendarId:r.calendar_id,name:r.name,color:r.color||"gray",createdAt:r.created_at,updatedAt:r.updated_at};
   }
   function eventFromRow(r){
-    return {id:r.id,calendarId:r.calendar_id,title:r.title,date:r.event_date,startTime:r.start_time?String(r.start_time).slice(0,5):"",endTime:r.end_time?String(r.end_time).slice(0,5):"",categoryId:r.category_id||"c_gen",color:r.color||"blue",status:r.status||"upcoming",description:r.description||"",mode:normalizeScheduleMode(r.event_mode),paymentStatus:PAYMENT_KEYS.indexOf(r.payment_status)>-1?r.payment_status:"unpaid",groupName:r.group_name||"",imageDataUrl:r.image_data_url||"",isPublic:!!r.is_public,createdAt:r.created_at,updatedAt:r.updated_at};
+    return {id:r.id,calendarId:r.calendar_id,title:r.title,date:r.event_date,startTime:r.start_time?String(r.start_time).slice(0,5):"",endTime:r.end_time?String(r.end_time).slice(0,5):"",categoryId:r.category_id||"c_gen",color:r.color||"blue",status:r.status||"upcoming",description:r.description||"",mode:inferScheduleModeFromEvent(r),paymentStatus:PAYMENT_KEYS.indexOf(r.payment_status)>-1?r.payment_status:"unpaid",groupName:r.group_name||"",imageDataUrl:r.image_data_url||"",isPublic:!!r.is_public,createdAt:r.created_at,updatedAt:r.updated_at};
   }
   function calendarToRow(c,includeExtra){
     var row={id:c.id,owner_id:c.ownerId||currentUser.id,name:c.name||"ปฏิทินงาน",description:c.description||"",public_token:c.publicToken||token(),is_public_enabled:c.isPublicEnabled!==false,theme_color:c.themeColor||"#3B82F6",created_at:c.createdAt||nowISO(),updated_at:c.updatedAt||nowISO()};
@@ -1855,6 +1871,7 @@
   /* ---------- mode (admin vs public) ---------- */
   var params=new URLSearchParams(location.search);
   var publicParam=params.get("public");
+  var hasModeParam=params.has("mode");
   var IS_PUBLIC=false;       // viewing in read-only public mode
   var IS_ADMIN=false;        // unlocked admin (can edit)
 
@@ -1994,6 +2011,7 @@
   function startApp(){
     $("#login").classList.remove("open");
     $("#app").style.display="";
+    choosePublicScheduleMode();
     syncToRealtimeToday();
     applyBranding();
     $("#addBtn").classList.toggle("hide",IS_PUBLIC);
@@ -2054,6 +2072,7 @@
       var next=IS_PUBLIC?await loadPublicData(publicParam):await loadCalendarById(state.calendar.id,false);
       if(!next){renderPublicClosed();return;}
       state=next;
+      choosePublicScheduleMode();
       if(IS_PUBLIC)syncCursorToPublicRange();
       applyTheme();
       applyBranding();
@@ -2093,6 +2112,13 @@
     selectedDay=clampDateToPublicMonths(selectedDay);
     miniCursor=new Date(cursor.getFullYear(),cursor.getMonth(),1);
   }
+  function choosePublicScheduleMode(){
+    if(!IS_PUBLIC||hasModeParam||!state||!state.events)return;
+    var publicEvents=state.events.filter(function(e){return e.isPublic!==false && inPublicMonthRange(e.date);});
+    var hasAnimation=publicEvents.some(function(e){return eventMode(e)==="animation";});
+    var hasGeneral=publicEvents.some(function(e){return eventMode(e)==="general";});
+    if(hasAnimation&&!hasGeneral)currentScheduleMode="animation";
+  }
   function syncToRealtimeToday(){
     var raw=new Date();
     lastRealtimeDay=ymd(raw);
@@ -2128,7 +2154,7 @@
       if(searchQuery){
         var q=searchQuery.toLowerCase();
         var cat=catById(e.categoryId);
-        var hay=(e.title+" "+(e.description||"")+" "+(e.code||"")+" "+(e.groupName||"")+" "+paymentLabel(e.paymentStatus)+" "+(cat?cat.name:"")).toLowerCase();
+        var hay=(e.title+" "+(e.description||"")+" "+(e.code||"")+" "+(e.groupName||"")+" "+paymentLabel(e.paymentStatus)+" "+animationStatusLabel(e.status)+" "+(cat?cat.name:"")).toLowerCase();
         if(hay.indexOf(q)===-1) return false;
       }
       if(currentScheduleMode==="general" && filters.categories.length && filters.categories.indexOf(e.categoryId)===-1) return false;
@@ -2349,9 +2375,19 @@
       });
     },{passive:true});
   }
+  function cancelMonthAutoScroll(){
+    if(monthScrollTimer)clearTimeout(monthScrollTimer);
+    monthScrollTimer=null;
+    if(monthScrollRaf){
+      cancelAnimationFrame(monthScrollRaf);
+      monthScrollRaf=0;
+    }
+    suppressMonthScrollSync=false;
+  }
   function scrollCurrentMonthIntoView(sc){
     sc=sc||$("#monthScroll");
     if(!sc)return;
+    if($("#detailModal")&&$("#detailModal").classList.contains("open"))return;
     var current=sc.querySelector("[data-current-month='true']");
     if(!current)return;
     if(monthScrollTimer)clearTimeout(monthScrollTimer);
@@ -2359,11 +2395,8 @@
     suppressMonthScrollSync=true;
     function place(){
       attempts++;
-      var targetTop=current.offsetTop-sc.offsetTop;
-      if(!isFinite(targetTop)){
-        var delta=current.getBoundingClientRect().top-sc.getBoundingClientRect().top;
-        targetTop=sc.scrollTop+delta;
-      }
+      var delta=current.getBoundingClientRect().top-sc.getBoundingClientRect().top;
+      var targetTop=sc.scrollTop+delta;
       sc.scrollTop=Math.max(0,targetTop-2);
       window.scrollTo(0,0);
       if(attempts<6){
@@ -2440,7 +2473,10 @@
       var timeHTML=e.startTime?(esc(e.startTime)+(e.endTime?'<small>'+esc(e.endTime)+'</small>':"")):'<small>ทั้งวัน</small>';
       var pvt=(!IS_PUBLIC && !e.isPublic)?'<span class="pvt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>ซ่อนจากสาธารณะ</span>':"";
       var meta=[];
-      if(eventMode(e)==="animation")meta.push('<span class="badge b-'+paymentBadgeClass(e.paymentStatus)+'"><span class="bdot" style="background:currentColor"></span>'+esc(paymentLabel(e.paymentStatus))+'</span>');
+      if(eventMode(e)==="animation"){
+        meta.push('<span class="badge b-'+paymentBadgeClass(e.paymentStatus)+'"><span class="bdot" style="background:currentColor"></span>'+esc(paymentLabel(e.paymentStatus))+'</span>');
+        meta.push('<span class="badge b-'+statusBadgeClass(e.status)+'"><span class="bdot" style="background:currentColor"></span>'+esc(animationStatusLabel(e.status))+'</span>');
+      }
       else if(state.calendar.showStatuses)meta.push('<span class="badge b-'+statusBadgeClass(e.status)+'"><span class="bdot" style="background:currentColor"></span>'+esc(statusLabel(e.status))+'</span>');
       if(eventMode(e)==="general"&&cat&&!e.isClass)meta.push('<span class="cat-tag"><span class="sw" style="width:9px;height:9px;border-radius:3px;background:'+COLORS[cat.color].bar+'"></span>'+esc(cat.name)+'</span>');
       if(eventMode(e)==="animation"&&e.groupName)meta.push('<span class="cat-tag">'+esc(e.groupName)+'</span>');
@@ -2481,6 +2517,7 @@
       var info=e.startTime?esc(e.startTime)+(e.endTime?" – "+esc(e.endTime):""):"ทั้งวัน";
       if(eventMode(e)==="animation"){
         info+=' · '+esc(paymentLabel(e.paymentStatus));
+        info+=' · '+esc(animationStatusLabel(e.status));
         if(e.groupName)info+=' · '+esc(e.groupName);
       }else if(state.calendar.showStatuses)info+=' · '+esc(statusLabel(e.status));
       return '<div class="pl-card" data-ev="'+e.id+'" style="border-left-color:'+col.bar+'">'+(eventMode(e)==="animation"&&e.imageDataUrl?'<img class="pl-img" src="'+esc(e.imageDataUrl)+'" alt="">':"")+'<div class="pl-t '+(e.status==="done"?"done":"")+'">'+esc(e.title)+pvt+'</div><div class="pl-time">'+info+'</div></div>';
@@ -2565,6 +2602,7 @@
     formColor=ev?ev.color:"blue";fillColorRow();
     $("#fDesc").value=ev?(ev.description||""):"";
     $("#fPaymentStatus").value=ev&&PAYMENT_KEYS.indexOf(ev.paymentStatus)>-1?ev.paymentStatus:"unpaid";
+    $("#fWorkStatus").value=ev&&ANIMATION_STATUS_TH[ev.status]?ev.status:"upcoming";
     $("#fGroupName").value=ev?(ev.groupName||""):"";
     renderEventImagePreview();
     setSwitch($("#fPublic"),ev?ev.isPublic:true);
@@ -2577,7 +2615,7 @@
     var data={
       title:title,date:$("#fDate").value||ymd(selectedDay),
       startTime:$("#fStart").value||"",endTime:$("#fEnd").value||"",
-      categoryId:editingEventMode==="animation"?"c_gen":$("#fCat").value,color:formColor,status:editingEventMode==="animation"?"upcoming":($("#fStatus").value||"upcoming"),
+      categoryId:editingEventMode==="animation"?"c_gen":$("#fCat").value,color:formColor,status:editingEventMode==="animation"?($("#fWorkStatus").value||"upcoming"):($("#fStatus").value||"upcoming"),
       description:$("#fDesc").value.trim(),
       mode:editingEventMode,
       paymentStatus:$("#fPaymentStatus").value||"unpaid",
@@ -2667,11 +2705,18 @@
   /* ===================================================================== */
   function openDetail(id){
     var e=getEventById(id);if(!e)return;
+    cancelMonthAutoScroll();
+    selectedDay=parseYMD(e.date);
+    cursor=new Date(selectedDay);
+    miniCursor=new Date(selectedDay.getFullYear(),selectedDay.getMonth(),1);
     var col=COLORS[e.color];var cat=catById(e.categoryId);
     $("#dmStrip").style.background=col.bar;
     $("#dmTitle").textContent=e.title;
     var meta="";
-    if(eventMode(e)==="animation")meta+='<span class="badge b-'+paymentBadgeClass(e.paymentStatus)+'"><span class="bdot" style="background:currentColor"></span>'+esc(paymentLabel(e.paymentStatus))+'</span>';
+    if(eventMode(e)==="animation"){
+      meta+='<span class="badge b-'+paymentBadgeClass(e.paymentStatus)+'"><span class="bdot" style="background:currentColor"></span>'+esc(paymentLabel(e.paymentStatus))+'</span>';
+      meta+='<span class="badge b-'+statusBadgeClass(e.status)+'"><span class="bdot" style="background:currentColor"></span>'+esc(animationStatusLabel(e.status))+'</span>';
+    }
     else if(state.calendar.showStatuses)meta+='<span class="badge b-'+statusBadgeClass(e.status)+'"><span class="bdot" style="background:currentColor"></span>'+esc(statusLabel(e.status))+'</span>';
     if(eventMode(e)==="general"&&cat&&!e.isClass)meta+='<span class="cat-tag" style="padding:3px 0"><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:'+COLORS[cat.color].bar+'"></span>'+esc(cat.name)+'</span>';
     if(eventMode(e)==="animation"&&e.groupName)meta+='<span class="cat-tag" style="padding:3px 0">'+esc(e.groupName)+'</span>';
