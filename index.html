@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#3B82F6">
+<meta property="og:image" content="CMD.png">
 <title>ปฏิทินตารางงาน</title>
+<link rel="preload" as="image" href="CMD.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -407,6 +409,11 @@
   .logo-editor{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   .logo-preview{width:58px;height:58px;border-radius:16px}
   .logo-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .app-cover{margin-top:14px}
+  .app-cover img{
+    display:block;width:100%;height:auto;max-height:360px;object-fit:cover;border-radius:20px;
+    border:1px solid var(--border);box-shadow:var(--shadow-sm);background:rgba(255,255,255,.45);
+  }
   .status-list,.class-list{display:flex;flex-direction:column;gap:8px}
   .status-item{display:grid;grid-template-columns:minmax(96px,.7fr) minmax(150px,1fr) auto auto;gap:10px;align-items:center;padding:9px 10px;border-radius:12px;background:rgba(255,255,255,.5);border:1px solid var(--border)}
   .status-preview{font-size:12.5px;font-weight:700;color:var(--text-dim);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -762,6 +769,11 @@
     border-color:rgba(255,255,255,.72);
     box-shadow:var(--liquid-inset);
   }
+  .app-cover img{
+    border-radius:24px;
+    border-color:rgba(255,255,255,.72);
+    box-shadow:0 14px 34px rgba(43,64,102,.10),var(--liquid-inset);
+  }
   .field input[type=text],
   .field input[type=email],
   .field input[type=date],
@@ -848,6 +860,7 @@
   body[data-mode="dark"] .status-item,
   body[data-mode="dark"] .class-item,
   body[data-mode="dark"] .month-color-item,
+  body[data-mode="dark"] .app-cover img,
   body[data-mode="dark"] .bg-color-item,
   body[data-mode="dark"] .detail-line{
     background:linear-gradient(150deg,rgba(30,41,59,.66),rgba(15,23,42,.36));
@@ -1110,6 +1123,9 @@
             <button class="btn btn-ghost" id="clearLogoBtn" type="button">ลบรูป</button>
           </div>
         </div>
+      </div>
+      <div class="app-cover">
+        <img src="CMD.png" alt="ภาพตัวอย่างแอป CalendarMe" loading="lazy">
       </div>
     </div>
 
